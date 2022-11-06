@@ -615,3 +615,8 @@ std::vector<std::string> cFileUtil::ReadFileAllLines(const std::string &filename
     }
     return all_lines;
 }
+
+std::string cFileUtil::GetAbsPath(const std::string &filename)
+{
+    return fs::absolute(filename);
+}

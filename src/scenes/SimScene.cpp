@@ -167,7 +167,6 @@ void cSimScene::Update(FLOAT delta_time)
  */
 void cSimScene::UpdateObjects()
 {
-
     // 1. update perturb on objects if possible
     if (mPerturb != nullptr)
     {
@@ -491,24 +490,30 @@ void cSimScene::UpdateImGui()
     auto name = tSimStateMachine::BuildStateStr(cur_state);
     // std::cout << "cSimScene::UpdateImGui, cur state = " << cur_state << "
     // name = " << name << std::endl;
-    ImGui::Text("simulation state: %s", name.c_str());
+    if (ImGui::CollapsingHeader("simulation options",
+                                ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::Text("simulation state: %s", name.c_str());
+
+        // update vertices and triangle number
+        int v_total = 0, t_total = 0;
+        for (auto &obj : this->mObjectList)
+        {
+            int num_of_v = obj->GetNumOfVertices();
+            int num_of_t = obj->GetNumOfTriangles();
+            v_total += num_of_v;
+            t_total += num_of_t;
+            ImGui::Text("%s v %d t %d", obj->GetObjName().c_str(), num_of_v,
+                        num_of_t);
+        }
+        ImGui::SameLine();
+        ImGui::Text("total v %d t %d", v_total, t_total);
+    }
+
     for (auto &obj : this->mObjectList)
     {
         obj->UpdateImGui();
     }
-    // update vertices and triangle number
-    int v_total = 0, t_total = 0;
-    for (auto &obj : this->mObjectList)
-    {
-        int num_of_v = obj->GetNumOfVertices();
-        int num_of_t = obj->GetNumOfTriangles();
-        v_total += num_of_v;
-        t_total += num_of_t;
-        ImGui::Text("%s v %d t %d", obj->GetObjName().c_str(), num_of_v,
-                    num_of_t);
-    }
-    ImGui::SameLine();
-    ImGui::Text("total v %d t %d", v_total, t_total);
 }
 
 const tVectorXf &cSimScene::GetPointDrawBuffer() { return mPointDrawBuffer; }

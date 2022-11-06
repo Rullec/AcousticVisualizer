@@ -21,7 +21,7 @@ enum eObjectType
  */
 namespace Json
 {
-class Value;
+    class Value;
 };
 
 struct tVertex;

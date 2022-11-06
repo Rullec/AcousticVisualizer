@@ -2,22 +2,16 @@
 // #include "Utils/MathUtil.h"
 #include "utils/MathUtil.h"
 #include "utils/RotUtil.h"
-// cArcBallCamera::cArcBallCamera()
-// {
-//     mType = eCameraType::ARCBALL_CAMERA;
-//     mCamPos = tVector3(2, 2, 2);
-//     mCamCenter = tVector3(0, 0, 0);
-//     mCamUp = tVector3(0, 1, 0);
-//     mCamFront = mCamCenter - mCamPos;
-//     mCamFront.normalize();
-//     mouse_acc *= 5e-2;
-//     key_acc *= 2e-2;
-//     // pos = tVector3(1, 1, 0);
-//     // center = tVector3(0, 1, 0);
-//     // up = tVector3(0, 1, 0);
-//     // front = center - pos;
-//     // front.normalize();
-// }
+
+cArcBallCamera::cArcBallCamera()
+    : CameraBase(tVector3::Ones() * 0.3, tVector3::Zero(), tVector3(0, 1, 0),
+                 50, 1e-4, 1e5)
+{
+
+    mType = eCameraType::ARCBALL_CAMERA;
+    mouse_acc *= 5e-2;
+    key_acc *= 2e-1;
+}
 #include "utils/TimeUtil.hpp"
 cTimePoint start_time_pt = cTimeUtil::GetCurrentTime_chrono();
 cArcBallCamera::cArcBallCamera(const tVector3 &pos, const tVector3 &center,
@@ -116,8 +110,7 @@ void cArcBallCamera::MouseMove(FLOAT mouse_x, FLOAT mouse_y)
         cRotUtil::AxisAngleToRotmat(
             cMathUtil::Expand(
                 center_to_pos.normalized().cross(offset_vec_world), 0))
-            .block(0, 0, 3, 3)
-            ;
+            .block(0, 0, 3, 3);
 
     center_to_pos = rotmat * center_to_pos;
 

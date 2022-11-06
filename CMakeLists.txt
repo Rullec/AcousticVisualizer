@@ -60,6 +60,29 @@ else()
     message(FATAL_ERROR "vulkan not found")
 endif()
 
+set(Boost_ADDITIONAL_VERSIONS "1.51" "1.51.0")
+find_package(Boost 1.50 REQUIRED 
+    COMPONENTS "filesystem" "system" "program_options")
+
+find_package(GSL REQUIRED)
+
+find_package(OpenMP REQUIRED)
+message("OpenMP_CXX_LIBRARIES: " ${OpenMP_CXX_LIBRARIES})
+
+set(MKL_USE_STATIC_LIBS ON)
+find_package(MKL REQUIRED)
+message("MKL_LIBRARY " ${MKL_LIBRARY})
+message("MKL PATH " $ENV{MKLROOT}/lib/intel64)
+
+find_package(Protobuf REQUIRED VERSION 3.21.5)
+message("Protobuf_VERSION = " ${Protobuf_VERSION})
+message("Protobuf_INCLUDE_DIRS = " ${Protobuf_INCLUDE_DIRS})
+message("Protobuf_LIBRARIES = " ${Protobuf_LIBRARIES})
+message("Protobuf_PROTOC_LIBRARIES = " ${Protobuf_PROTOC_LIBRARIES})
+message("Protobuf_LITE_LIBRARIES = " ${Protobuf_LITE_LIBRARIES})
+
+
+add_subdirectory(./src/protobuf)
 add_subdirectory(./imgui)
 add_subdirectory(./implot)
 add_subdirectory(./src/utils)
@@ -67,6 +90,7 @@ add_subdirectory(./src/geometries)
 add_subdirectory(./src/sim)
 add_subdirectory(./src/cameras)
 add_subdirectory(./src/scenes)
+
 
 set(my_libs ${scenes_lib} ${utils_lib} ${imgui_lib})
 

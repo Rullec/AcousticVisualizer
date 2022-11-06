@@ -7,13 +7,13 @@
 #include "utils/LogUtil.h"
 #include <iostream>
 
-void cObjUtil::LoadObj(const cObjUtil::tParams &param,
+void cObjUtil::LoadObj(const std::string &path,
                        std::vector<tVertexPtr> &v_array,
                        std::vector<tEdgePtr> &e_array,
                        std::vector<tTrianglePtr> &t_array)
 {
 
-    std::string path = param.mPath;
+    
 
     v_array.clear();
     e_array.clear();

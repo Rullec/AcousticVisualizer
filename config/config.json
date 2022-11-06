@@ -1,28 +1,28 @@
 {
-    "app_type": "maiun",
+    "app_type": "main",
     "scene_type": "sim",
     "obj_list": [
         {
             "object_name": "vib",
             "object_type": "AcousticBody",
-            "ini_path" : "./config/gen_sound0.ini"
+            "ini_path" : "./config/gen_sound370.ini"
         }
     ],
     "window_height": 800,
     "window_width": 1500,
     "enable_draw": true,
-    "pause_at_first": true,
+    "pause_at_first": false,
     "ground_png_path": "data/grid0.png",
     "camera": {
         "camera_type": "arcball_cam",
         "camera_pos": [
-            0.0,
-            0.4,
-            0.3
+            0.1,
+            0.1,
+            0.1
         ],
         "camera_focus": [
             0.0,
-            0.4,
+            0.0,
             0.0
         ],
         "fov": 52.5,

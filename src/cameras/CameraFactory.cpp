@@ -1,12 +1,16 @@
-#include "CameraBuilder.h"
+#include "CameraFactory.h"
 #include "ArcBallCamera.h"
 #include "FPSCamera.h"
 #include "OrthoCamera.h"
 #include <iostream>
 
-CameraBase *cCameraBuilder::BuildCamera(const Json::Value &camera_json)
+CameraBasePtr cCameraFactory::instance(new cArcBallCamera(),
+                                       cCameraFactory::DestroyInstance);
+
+CameraBasePtr cCameraFactory::getInstance() { return instance; }
+void cCameraFactory::ChangeCamera(const Json::Value &camera_json)
 {
-    CameraBase *cam = nullptr;
+
     std::string type_str = cJsonUtil::ParseAsString("camera_type", camera_json);
     Json::Value camera_pos_json =
         cJsonUtil::ParseAsValue("camera_pos", camera_json);
@@ -14,12 +18,12 @@ CameraBase *cCameraBuilder::BuildCamera(const Json::Value &camera_json)
         cJsonUtil::ParseAsValue("camera_focus", camera_json);
     SIM_ASSERT(camera_pos_json.size() == 3);
     SIM_ASSERT(camera_focus_json.size() == 3);
-    tVector3 mCameraInitFocus = tVector3(camera_focus_json[0].asFloat(),
-                                           camera_focus_json[1].asFloat(),
-                                           camera_focus_json[2].asFloat());
+    tVector3 mCameraInitFocus =
+        tVector3(camera_focus_json[0].asFloat(), camera_focus_json[1].asFloat(),
+                 camera_focus_json[2].asFloat());
     tVector3 mCameraInitPos =
         tVector3(camera_pos_json[0].asFloat(), camera_pos_json[1].asFloat(),
-                  camera_pos_json[2].asFloat());
+                 camera_pos_json[2].asFloat());
 
     FLOAT near_plane_dist = cJsonUtil::ParseAsFloat("near", camera_json);
     FLOAT far_plane_dist = cJsonUtil::ParseAsFloat("far", camera_json);
@@ -36,17 +40,17 @@ CameraBase *cCameraBuilder::BuildCamera(const Json::Value &camera_json)
     {
     case eCameraType::FPS_CAMERA:
     {
-        cam =
-            new FPSCamera(mCameraInitPos, mCameraInitFocus, tVector3(0, 1, 0),
-                          mCameraInitFov, near_plane_dist, far_plane_dist);
+        instance = std::make_shared<FPSCamera>(
+            mCameraInitPos, mCameraInitFocus, tVector3(0, 1, 0), mCameraInitFov,
+            near_plane_dist, far_plane_dist);
 
         break;
     }
     case eCameraType::ARCBALL_CAMERA:
     {
-        cam = new cArcBallCamera(mCameraInitPos, mCameraInitFocus,
-                                 tVector3(0, 1, 0), mCameraInitFov,
-                                 near_plane_dist, far_plane_dist);
+        instance = std::make_shared<cArcBallCamera>(
+            mCameraInitPos, mCameraInitFocus, tVector3(0, 1, 0), mCameraInitFov,
+            near_plane_dist, far_plane_dist);
         break;
     }
     case eCameraType::ORTHO_CAMERA:
@@ -54,9 +58,9 @@ CameraBase *cCameraBuilder::BuildCamera(const Json::Value &camera_json)
 
         FLOAT init_box =
             cJsonUtil::ParseAsFloat("camera_init_box", camera_json);
-        cam = new cOrthoCamera(mCameraInitPos, mCameraInitFocus,
-                               tVector3(0, 1, 0), init_box, near_plane_dist,
-                               far_plane_dist);
+        instance = std::make_shared<cOrthoCamera>(
+            mCameraInitPos, mCameraInitFocus, tVector3(0, 1, 0), init_box,
+            near_plane_dist, far_plane_dist);
         break;
     }
     default:
@@ -64,5 +68,5 @@ CameraBase *cCameraBuilder::BuildCamera(const Json::Value &camera_json)
         exit(1);
         break;
     }
-    return cam;
 }
+void cCameraFactory::DestroyInstance(CameraBase *ptr) { delete ptr; }

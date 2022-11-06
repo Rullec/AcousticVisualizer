@@ -47,24 +47,24 @@ public:
     virtual tVector4 CalcCOM() const;
     virtual void MoveTranslation(const tVector4 &shift);
     virtual void ApplyScale(FLOAT scale);
-    virtual void SetCurrentPos(const tVector3 & pos);
+    virtual void SetCurrentPos(const tVector3 &pos);
 
 protected:
     FLOAT mCurTime;
     eKinematicBodyShape mBodyShape;
     std::string mCustomMeshPath;
     tVectorX
-        mScaledMeshVertices; // the loaded obj mesh pos after AABB rescaled
-    tVector4 mTargetAABBDontUseDirectly; // scale setting
-    tVector4 mScaleDontUseDirectly;      // scale setting explictly
-    tVector4 mInitPos;                   // init position for kinematic body
-    tVector4 mInitOrientation;           // init orietnation for kinect body,
+        mScaledMeshVertices;                 // the loaded obj mesh pos after AABB rescaled
+    tVector4 mTargetAABBDontUseDirectly;     // scale setting
+    tVector4 mScaleDontUseDirectly;          // scale setting explictly
+    tVector4 mInitPos;                       // init position for kinematic body
+    tVector4 mInitOrientation;               // init orietnation for kinect body,
     tVector4 mTargetPos, mTargetOrientation; // target pos and orientation
     bool mIsStatic;
     tVector4 mPlaneEquation;
     FLOAT mPlaneScale;
-    FLOAT mMovingElaspedTimeSec;  // how many seconds does it cost for moving
-                                  // object?
+    FLOAT mMovingElaspedTimeSec; // how many seconds does it cost for moving
+                                 // object?
     tMatrix4 mCurWorldTransform; //
     // methods
     void BuildCustomKinematicBody();

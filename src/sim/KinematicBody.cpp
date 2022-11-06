@@ -163,9 +163,7 @@ void cKinematicBody::BuildPlane()
 void cKinematicBody::BuildCustomKinematicBody()
 {
     // std::cout << "mesh path = " << mCustomMeshPath << std::endl;
-    cObjUtil::tParams obj_params;
-    obj_params.mPath = mCustomMeshPath;
-    cObjUtil::LoadObj(obj_params, mVertexArray, mEdgeArray, mTriangleArray);
+    cObjUtil::LoadObj(mCustomMeshPath, mVertexArray, mEdgeArray, mTriangleArray);
 
     // tMatrix trans = GetWorldTransform();
     tVector4 scale_vec = GetScaleVec();
@@ -213,7 +211,7 @@ void cKinematicBody::SetMeshPos()
  *          world_pos = T * local_pos
  */
 tMatrix4 GetWorldTransform(const tVector4 &init_pos,
-                            const tVector4 &init_ori)
+                           const tVector4 &init_ori)
 {
     tMatrix4 trans = tMatrix4::Identity();
     trans.block(0, 3, 3, 1) = init_pos.segment(0, 3);
@@ -235,8 +233,8 @@ void cKinematicBody::UpdateCurWorldTransformByTime()
         if (cur_time > mMovingElaspedTimeSec)
             cur_time = mMovingElaspedTimeSec;
         tVector4 cur_pos = (mMovingElaspedTimeSec - cur_time) /
-                                mMovingElaspedTimeSec * mInitPos +
-                            cur_time / mMovingElaspedTimeSec * mTargetPos;
+                               mMovingElaspedTimeSec * mInitPos +
+                           cur_time / mMovingElaspedTimeSec * mTargetPos;
         tVector4 cur_ori =
             (mMovingElaspedTimeSec - cur_time) / mMovingElaspedTimeSec *
                 mInitOrientation +

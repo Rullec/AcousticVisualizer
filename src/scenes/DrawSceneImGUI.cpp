@@ -315,6 +315,7 @@ void cDrawSceneImGui::PreUpdateImGui()
         ImGui::Begin("config");
         ImGui::Text("FPS %.1f", mCurFPS);
     }
+    
 }
 void cDrawSceneImGui::UpdateImGui() {}
 void cDrawSceneImGui::PostUpdateImGui()

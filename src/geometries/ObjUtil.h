@@ -11,19 +11,13 @@ SIM_DECLARE_PTR(tTriangle);
 SIM_DECLARE_PTR(tEdge);
 SIM_DECLARE_PTR(tVertex);
 
-
 /**
  * \brief           handle everything about obj
  */
 class cObjUtil
 {
 public:
-    struct tParams
-    {
-        std::string mPath; // obj file path
-    };
-
-    static void LoadObj(const tParams &param,
+    static void LoadObj(const std::string &mPath,
                         std::vector<tVertexPtr> &mVertexArray,
                         std::vector<tEdgePtr> &mEdgeArray,
                         std::vector<tTrianglePtr> &mTriangleArray);
@@ -36,5 +30,4 @@ public:
     static void BuildEdge(const std::vector<tVertexPtr> &mVertexArray,
                           std::vector<tEdgePtr> &mEdgeArray,
                           const std::vector<tTrianglePtr> &mTriangleArray);
-
 };

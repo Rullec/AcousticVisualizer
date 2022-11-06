@@ -25,7 +25,7 @@ struct tPerturb
     // int mAffectedVerticesId[3];
     // tVertexPtr mAffectedVertices[3];
     tVector3 mBarycentricCoords; // barycentric coordinates of raw raycast
-                                  // point on the affected triangle
+                                 // point on the affected triangle
 protected:
     tVector4 mPerturbForce;
     tVector4 mShiftPlaneEquation;

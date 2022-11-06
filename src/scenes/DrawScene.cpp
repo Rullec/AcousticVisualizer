@@ -164,10 +164,10 @@ bool cDrawScene::IsRelease(int glfw_action)
 
 bool cDrawScene::IsPress(int glfw_action) { return GLFW_PRESS == glfw_action; }
 
-tVector4
-CalcCursorPointWorldPos_perspective_proj(float fov, float xpos, float ypos,
-                                         int height, int width,
-                                         const tMatrix4 &view_mat_inv)
+tVector4 CalcCursorPointWorldPos_perspective_proj(float fov, float xpos,
+                                                  float ypos, int height,
+                                                  int width,
+                                                  const tMatrix4 &view_mat_inv)
 {
     SIM_ERROR("hasn't finished yet");
     return tVector4::Zero();
@@ -494,7 +494,7 @@ void cDrawScene::CreateGraphicsPipeline(const std::string mode,
 /**
  * \brief       Init vulkan and other stuff
  */
-#include "cameras/CameraBuilder.h"
+#include "cameras/CameraFactory.h"
 cRenderResourcePtr gAxesRenderResource = nullptr;
 void cDrawScene::Init(const std::string &conf_path)
 {
@@ -503,8 +503,8 @@ void cDrawScene::Init(const std::string &conf_path)
     cJsonUtil::LoadJson(conf_path, root);
     Json::Value camera_json = cJsonUtil::ParseAsValue("camera", root);
     mGroundPNGPath = cJsonUtil::ParseAsString(GROUND_PNG_PATH_KEY, root);
-    mCamera =
-        std::shared_ptr<CameraBase>(cCameraBuilder::BuildCamera(camera_json));
+    cCameraFactory::ChangeCamera(camera_json);
+    mCamera = cCameraFactory::getInstance();
     gAxesRenderResource = cRenderUtil::GetAxesRenderingResource();
     ClearRenderResource();
     AddRenderResource(gAxesRenderResource);

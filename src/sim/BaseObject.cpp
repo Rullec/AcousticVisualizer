@@ -80,12 +80,6 @@ std::vector<tTrianglePtr> &cBaseObject::GetTriangleArrayRef()
 void cBaseObject::ChangeTriangleColor(int tri_id, const tVector3 &color)
 {
     mTriangleArray[tri_id]->mColor.segment(0, 3) = color;
-    // tVector new_color = tVector4(color[0], color[1], color[2], mColorAlpha);
-    // mVertexArray[mTriangleArray[tri_id]->mId0]->mColor =
-    // new_color; mVertexArray[mTriangleArray[tri_id]->mId1]->mColor
-    // = new_color;
-    // mVertexArray[mTriangleArray[tri_id]->mId2]->mColor =
-    // new_color;
 }
 
 /**

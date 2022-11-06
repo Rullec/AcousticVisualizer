@@ -2,7 +2,7 @@ set(src
 
     ArcBallCamera.cpp
     CameraBase.cpp
-    CameraBuilder.cpp
+    CameraFactory.cpp
     FPSCamera.cpp
     OrthoCamera.cpp
 )

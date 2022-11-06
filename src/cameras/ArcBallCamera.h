@@ -10,7 +10,7 @@
 class cArcBallCamera : public CameraBase
 {
 public:
-    // cArcBallCamera();
+    cArcBallCamera();
     cArcBallCamera(const tVector3 &pos, const tVector3 &center,
                    const tVector3 &up, FLOAT fov, FLOAT near_plane,
                    FLOAT far_plane);
