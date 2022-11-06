@@ -1,0 +1,34 @@
+{
+    "app_type": "maiun",
+    "scene_type": "sim",
+    "obj_list": [
+        {
+            "object_name": "vib",
+            "object_type": "AcousticBody",
+            "ini_path" : "./config/gen_sound0.ini"
+        }
+    ],
+    "window_height": 800,
+    "window_width": 1500,
+    "enable_draw": true,
+    "pause_at_first": true,
+    "ground_png_path": "data/grid0.png",
+    "camera": {
+        "camera_type": "arcball_cam",
+        "camera_pos": [
+            0.0,
+            0.4,
+            0.3
+        ],
+        "camera_focus": [
+            0.0,
+            0.4,
+            0.0
+        ],
+        "fov": 52.5,
+        "near": 1e-3,
+        "far": 100
+    },
+    "enable_profiling": false,
+    "enable_collision_detection": false
+}
