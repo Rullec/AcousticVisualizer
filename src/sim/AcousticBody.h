@@ -24,6 +24,7 @@ struct tClickInfo
 class ModalModel;
 #include "io/TglMeshReader.hpp"
 class FMMTransferEval;
+SIM_DECLARE_STRUCT_AND_PTR(tDiscretedWave);
 class cAcousticBody : public cBaseObject
 {
 public:
@@ -43,6 +44,7 @@ protected:
     tAcousticMaterialProp mAcousticProp;
     tClickInfo mClickInfo;
 
+    tEigenArr<tVector3> mTrianglesCOM;
     virtual void InitAudioBuffer();
     int mNumOfFixed;
     ModalModel *mModalModel;
@@ -52,7 +54,7 @@ protected:
     TriangleMesh<double> *mesh_;
     int running_threads = 0;
     std::vector<double> soundBuffer_[NUM_THREADS];
-    virtual void AudioSynthesis(bool enable_scale = true);
+    virtual void AudioSynthesis();
     virtual void InitAudioGeo();
     void single_channel_synthesis(const Tuple3ui &tri, const Vector3d &dir,
                                   const Point3d &cam, float amplitude,
@@ -60,4 +62,8 @@ protected:
     void run_thread(double collision_time, int selTriId, Vector3d nml,
                     Point3d CamPos, float amp, int index_t);
     std::vector<double> whole_soundBuffer;
+    tDiscretedWavePtr mSynthesisAudio;
+    bool mEnableRangeClick;
+    float mRangeClickRadius;
+    bool mEnableAudioScale;
 };

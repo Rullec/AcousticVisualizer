@@ -28,6 +28,9 @@ tClickInfo::tClickInfo()
 cAcousticBody::cAcousticBody(int id)
     : cBaseObject(eObjectType::ACOUSTICBODY_TYPE, id)
 {
+    mEnableRangeClick = true;
+    mEnableAudioScale = true;
+    mRangeClickRadius = 1 * 1e-3;
 }
 cAcousticBody::~cAcousticBody() {}
 void cAcousticBody::Init(const Json::Value &conf)
@@ -78,6 +81,15 @@ void cAcousticBody::Init(const Json::Value &conf)
 
     cObjUtil::LoadObj(mSurfaceObjPath, mVertexArray, mEdgeArray,
                       mTriangleArray);
+    mTrianglesCOM.resize(mTriangleArray.size());
+    for (int i = 0; i < GetNumOfTriangles(); i++)
+    {
+        mTrianglesCOM[i] = (mVertexArray[mTriangleArray[i]->mId0]->mPos +
+                            mVertexArray[mTriangleArray[i]->mId1]->mPos +
+                            mVertexArray[mTriangleArray[i]->mId2]->mPos)
+                               .segment(0, 3) /
+                           3;
+    }
     // add color
     for (auto &v : mVertexArray)
     {
@@ -97,7 +109,7 @@ void cAcousticBody::Init(const Json::Value &conf)
     InitAudioGeo();
     InitAudioBuffer();
 
-    AudioSynthesis(false);
+    AudioSynthesis();
 }
 #include "cameras/CameraBase.h"
 #include "cameras/CameraFactory.h"
@@ -199,12 +211,18 @@ void cAcousticBody::InitAudioBuffer()
         std::max(int(SR * 1.0 * 1 + SR * mClickInfo.mTS * 1), SR * 1));
 }
 
-void cAcousticBody::AudioSynthesis(bool enable_scale)
+void cAcousticBody::AudioSynthesis()
 {
+    for (auto &x : mClickInfo.mTriIds)
+    {
+        mTriangleArray[x]->mColor = ColorPurple;
+    }
     std::thread ts[NUM_THREADS];
     printf("[warn] sel TRI id here!\n");
     std::vector<int> selTriIds = mClickInfo.mTriIds;
     std::vector<FLOAT> Amps = mClickInfo.mAmp;
+
+    SIM_ASSERT(selTriIds.size() == Amps.size());
     memset(whole_soundBuffer.data(), 0,
            sizeof(double) * whole_soundBuffer.size());
 
@@ -217,7 +235,7 @@ void cAcousticBody::AudioSynthesis(bool enable_scale)
     {
         int index_t = i % NUM_THREADS;
         int selTriId = selTriIds[i]; // click的三角形id
-        double amp = Amps[i] / 16;   // click的力大小, 缩小16倍
+        double amp = Amps[i] / 1e3;  // click的力大小, 缩小16倍
         // double collision_time = times.at(i).toDouble(); // 碰撞时间(起始时间)
         double collision_time = 0;
 
@@ -271,7 +289,7 @@ void cAcousticBody::AudioSynthesis(bool enable_scale)
     float max_sound = *(std::max_element(std::begin(whole_soundBuffer),
                                          std::end(whole_soundBuffer)));
 
-    if (enable_scale == true)
+    if (mEnableAudioScale == true)
     {
         float scale = 0.9 / max_sound;
         for (auto &i : whole_soundBuffer)
@@ -279,25 +297,28 @@ void cAcousticBody::AudioSynthesis(bool enable_scale)
         printf("apply scale %.1f\n", scale);
         max_sound = 0.9;
     }
-
-    // normalize if too loud
-    if (max_sound > 500)
+    else
     {
-        max_sound = std::min(500.0f, max_sound);
-        printf("max sound %.1f\n", max_sound);
-        if (max_sound > 1.0)
+
+        // normalize if too loud
+        if (max_sound > 500)
         {
-            for (auto &i : whole_soundBuffer)
-                i /= max_sound;
+            max_sound = std::min(500.0f, max_sound);
+            printf("max sound %.1f\n", max_sound);
+            if (max_sound > 1.0)
+            {
+                for (auto &i : whole_soundBuffer)
+                    i /= max_sound;
+            }
         }
     }
     // convert it to audio wave
-    auto wave = std::make_shared<tDiscretedWave>(1.0 / SR);
-    wave->SetData(whole_soundBuffer);
+    mSynthesisAudio = std::make_shared<tDiscretedWave>(1.0 / SR);
+    mSynthesisAudio->SetData(whole_soundBuffer);
     // wave->DumpToWAV("tmp.wav");
 
     auto output = cAudioOutput::getInstance();
-    output->SetWave(wave);
+    output->SetWave(mSynthesisAudio);
 
     printf("set wav succ\n");
 }
@@ -460,6 +481,9 @@ void cAcousticBody::single_channel_synthesis(const Tuple3ui &tri,
                 if (std::isnan(result) == true)
                 {
                     result = 0;
+                    printf(
+                        "amp %.1f ss %.1f omegaD %.1f ts %.1f amplitude %.1f\n",
+                        amp, SS, omegaD[i], ts, amplitude);
                     assert(false);
                 }
             }
@@ -518,15 +542,134 @@ void cAcousticBody::UpdateImGui()
 
         ImGui::Text("audio amp %.1f ts %.1f", mClickInfo.mAudioAmp,
                     mClickInfo.mTS);
+        ImGui::Checkbox("enable range click", &mEnableRangeClick);
+        ImGui::Checkbox("enable audio scale", &mEnableAudioScale);
+        if (mEnableRangeClick)
+        {
+            // R = 1mm - 1cm
+            ImGui::DragFloat("click R", &mRangeClickRadius, 1e-4, 1e-3, 3e-3,
+                             "%.4f");
+        }
     }
 }
+
+#include <queue>
+std::vector<int> find_min_k(const std::vector<double> &test, int k = 5)
+{
+    std::vector<int> indices(test.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::partial_sort(indices.begin(), indices.begin() + k, indices.end(),
+                      [&](int A, int B) { return test[A] < test[B]; });
+    std::vector<int> vals(0);
+    for (int j = 0; j < k; j++)
+    {
+        vals.push_back(indices[j]);
+    }
+    return vals;
+}
+
 #include "sim/Perturb.h"
 void cAcousticBody::ApplyUserPerturbForceOnce(tPerturb *pert)
 {
-    if (mClickInfo.mTriIds[0] != pert->mAffectedTriId)
+    bool need_to_reproduce = false;
+    std::vector<int> click_ids(0);
+    // 1. calculate current click vertex
+    if (mEnableRangeClick == true)
     {
-        mClickInfo.mTriIds = {pert->mAffectedTriId};
-        AudioSynthesis(false);
+
+        int center_tid = pert->mAffectedTriId;
+        std::vector<FLOAT> dist(GetNumOfTriangles(), 0);
+        for (int i = 0; i < GetNumOfTriangles(); i++)
+            dist[i] = (mTrianglesCOM[center_tid] - mTrianglesCOM[i]).norm();
+        // std::cout << "click pos = " << mTrianglesCOM[center_tid].transpose()
+        //           << std::endl;
+        // trial to
+        int init_trial = 5;
+        while (true)
+        {
+            std::vector<int> indices = find_min_k(dist, init_trial);
+            // for (auto i : indices)
+            // {
+            //     printf("tri %d dist %.3f pos %.3f %.3f %.3f\n", i, dist[i],
+            //            mTrianglesCOM[i][0], mTrianglesCOM[i][1],
+            //            mTrianglesCOM[i][2]);
+            // }
+            // std::cout << "trial " << init_trial << std::endl;
+            if (dist[indices[indices.size() - 1]] > mRangeClickRadius)
+            {
+
+                for (int j = 0; j < init_trial; j++)
+                {
+                    if (dist[indices[j]] < mRangeClickRadius)
+                    {
+                        click_ids.push_back(indices[j]);
+                        // std::cout << "click " << click_ids[j]
+                        //           << " dist = " << dist[indices[j]]
+                        //           << std::endl;
+                    }
+                    else
+                    {
+                        // std::cout << "num of clicks = " << click_ids.size()
+                        //           << std::endl;
+                        break;
+                    }
+                }
+                break;
+            }
+            else
+            {
+
+                init_trial *= 2;
+            }
+        }
+    }
+    else
+    {
+        click_ids = {pert->mAffectedTriId};
+    }
+
+    if (mClickInfo.mTriIds.size() != click_ids.size())
+    {
+        need_to_reproduce = true;
+    }
+    else
+    {
+        for (int i = 0; i < click_ids.size(); i++)
+        {
+            if (mClickInfo.mTriIds[i] != click_ids[i])
+            {
+                need_to_reproduce = true;
+                break;
+            }
+        }
+    }
+    //
+    if (need_to_reproduce)
+    {
+        std::cout << "[debug] recalc audio for " << click_ids.size()
+                  << " pts: ";
+        for (auto &x : click_ids)
+        {
+            std::cout << x << " ";
+        }
+        std::cout << std::endl;
+
+        // old triangles set to blue
+        for (auto &x : mClickInfo.mTriIds)
+        {
+            mTriangleArray[x]->mColor = ColorBlue;
+        }
+
+        // new triangles set to gray
+
+        mClickInfo.mTriIds = click_ids;
+        mClickInfo.mAmp.clear();
+        for (auto &i : click_ids)
+        {
+            mClickInfo.mAmp.push_back(1);
+        }
+
+        AudioSynthesis();
         // for (int i = 0; i < whole_soundBuffer.size(); i++)
         // {
 
