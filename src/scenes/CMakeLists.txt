@@ -15,4 +15,4 @@ add_library(
     Raycaster.cpp
 )
 
-target_link_libraries(scenes_lib cam_lib imgui_lib implot_lib sim_lib ${Vulkan_LIBRARIES} ${GLFW3_LIBRARY})
+target_link_libraries(scenes_lib ${Vulkan_LIBRARIES} cam_lib imgui_lib implot_lib sim_lib ${GLFW3_LIBRARY} X11)
