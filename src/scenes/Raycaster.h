@@ -41,6 +41,7 @@ public:
     static void CalcCastWindowSize(const tMatrix2i &cast_range_window,
                                    int &window_width, int &window_height,
                                    tVector2i &st);
+    void Update(const std::vector<cBaseObjectPtr> &object_array);
 
 protected:
     std::vector<cBaseObjectPtr> mObjects;

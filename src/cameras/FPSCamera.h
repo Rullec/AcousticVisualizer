@@ -11,7 +11,7 @@ class FPSCamera : public CameraBase
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     FPSCamera(const tVector3 &pos, const tVector3 &center,
-              const tVector3 &up, FLOAT fov, FLOAT near_plane, FLOAT far_plane);
+              const tVector3 &up, _FLOAT fov, _FLOAT near_plane, _FLOAT far_plane);
     virtual ~FPSCamera();
 
     virtual void MoveForward() override;
@@ -20,11 +20,11 @@ public:
     virtual void MoveRight() override;
     virtual void MoveUp() override;
     virtual void MoveDown() override;
-    virtual void MouseMove(FLOAT mouse_x, FLOAT mouse_y) override;
+    virtual void MouseMove(_FLOAT mouse_x, _FLOAT mouse_y) override;
 
 protected:
     void Init();
-    FLOAT pitch, yaw;
+    _FLOAT pitch, yaw;
 };
 
 #endif // ROBOT_CAMERA_H

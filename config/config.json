@@ -1,11 +1,26 @@
 {
     "app_type": "main",
     "scene_type": "sim",
+    "obj_list.b": [
+        {
+            "object_type": "AcousticManager",
+            "object_name": "manager",
+            "summary_json": "scripts/shapenet_summary.json",
+            "default_type_and_data_id": [
+                3,
+                0
+            ]
+        }
+    ],
     "obj_list": [
         {
-            "object_name": "vib",
-            "object_type": "AcousticBody",
-            "ini_path" : "./config/gen_sound370.ini"
+            "object_type": "AcousticManager",
+            "object_name": "manager",
+            "summary_json": "scripts/shapenet_summary.json",
+            "default_type_and_data_id": [
+                2,
+                0
+            ]
         }
     ],
     "window_height": 800,
@@ -13,17 +28,21 @@
     "enable_draw": true,
     "pause_at_first": false,
     "ground_png_path": "data/grid0.png",
+    "enable_ground": true,
+    "ground_height": false,
+    "enable_camera_auto_rot": false,
+    "enable_axes": false,
     "camera": {
         "camera_type": "arcball_cam",
         "camera_pos": [
-            0.1,
-            0.1,
-            0.1
+            1,
+            1,
+            1
         ],
         "camera_focus": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0.1,
+            0
         ],
         "fov": 52.5,
         "near": 1e-3,

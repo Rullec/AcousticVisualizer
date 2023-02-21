@@ -1,17 +1,22 @@
 #include "DrawScene.h"
 #include "SceneBuilder.h"
 #include "cameras/ArcBallCamera.h"
+#include "cameras/CameraFactory.h"
 #include "geometries/Primitives.h"
 #include "glm/glm.hpp"
 #include "scenes/SimCallback.h"
 #include "scenes/SimScene.h"
+#include "scenes/TextureManager.h"
 #include "utils/JsonUtil.h"
 #include "utils/LogUtil.h"
+#include "utils/RenderGrid.h"
 #include "utils/TimeUtil.hpp"
+#include "utils/json/json.h"
 #include "vulkan/vulkan.h"
 #include <iostream>
 #include <optional>
 #include <set>
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLFW_INCLUDE_VULKAN
@@ -117,35 +122,7 @@ tVkVertex::getAttributeDescriptions()
     1. position: vec2f in NDC
     2. color: vec3f \in [0, 1]
 */
-const float ground_scale = 1000.0;
-bool gEnableGround = true;
-std::vector<tVkVertex> ground_vertices = {
-    {{50.0f, 0.0f, -50.0f},
-     {0.7f, 0.7f, 0.7f, 1.0f},
-     {0.0f, 0.0f, 0.0f},
-     {ground_scale, 0.0f}},
-    {{-50.0f, 0.0f, -50.0f},
-     {0.7f, 0.7f, 0.7f, 1.0f},
-     {0.0f, 0.0f, 0.0f},
-     {0.0f, 0.0f}},
-    {{-50.0f, 0.0f, 50.0f},
-     {0.7f, 0.7f, 0.7f, 1.0f},
-     {0.0f, 0.0f, 0.0f},
-     {0.0f, ground_scale}},
 
-    {{50.0f, 0.0f, -50.0f},
-     {0.7f, 0.7f, 0.7f, 1.0f},
-     {0.0f, 0.0f, 0.0f},
-     {ground_scale, 0.0f}},
-    {{-50.0f, 0.0f, 50.0f},
-     {0.7f, 0.7f, 0.7f, 1.0f},
-     {0.0f, 0.0f, 0.0f},
-     {0.0f, ground_scale}},
-    {{50.0f, 0.0f, 50.0f},
-     {0.7f, 0.7f, 0.7f, 1.0f},
-     {0.0f, 0.0f, 0.0f},
-     {ground_scale, ground_scale}},
-};
 tVector4 cDrawScene::GetCameraPos() const
 {
     tVector4 pos = tVector4::Ones();
@@ -221,17 +198,14 @@ void cDrawScene::CleanVulkan()
     CleanSwapChain();
 
     vkDestroySampler(mDevice, mTextureSampler, nullptr);
-    vkDestroyImageView(mDevice, mTextureImageView, nullptr);
-    vkDestroyImage(mDevice, mTextureImage, nullptr);
-    vkFreeMemory(mDevice, mTextureImageMemory, nullptr);
 
     vkDestroyImageView(mDevice, mDepthImageView, nullptr);
     vkDestroyImage(mDevice, mDepthImage, nullptr);
     vkFreeMemory(mDevice, mDepthImageMemory, nullptr);
+    GetTextureManager()->Clear();
 
     vkDestroyDescriptorSetLayout(mDevice, mDescriptorSetLayout, nullptr);
     mSimTriangleBuffer.DestroyAndFree(mDevice);
-    mGroundTriangleBuffer.DestroyAndFree(mDevice);
     mLineBuffer.DestroyAndFree(mDevice);
     mPointDrawBuffer.DestroyAndFree(mDevice);
 
@@ -444,7 +418,18 @@ void cDrawScene::CreateGraphicsPipeline(const std::string mode,
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-    SIM_ASSERT(vkCreatePipelineLayout(mDevice, &pipelineLayoutInfo, nullptr,
+    // add push constant for "enable_texture"
+    {
+        VkPushConstantRange push_constant;
+        push_constant.offset = 0;
+        push_constant.size = sizeof(tMaterialPushConstant);
+        push_constant.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        pipelineLayoutInfo.pPushConstantRanges = &push_constant;
+        pipelineLayoutInfo.pushConstantRangeCount = 1;
+    }
+    const VkPipelineLayoutCreateInfo *info_ptr = &pipelineLayoutInfo;
+    SIM_ASSERT(vkCreatePipelineLayout(mDevice, info_ptr, nullptr,
                                       &mPipelineLayout) == VK_SUCCESS);
     // }
 
@@ -494,27 +479,49 @@ void cDrawScene::CreateGraphicsPipeline(const std::string mode,
 /**
  * \brief       Init vulkan and other stuff
  */
-#include "cameras/CameraFactory.h"
+#include "cameras/CameraBuilder.h"
 cRenderResourcePtr gAxesRenderResource = nullptr;
+cRenderResourcePtr gGroundRenderResource = nullptr;
 void cDrawScene::Init(const std::string &conf_path)
 {
     // init camera pos
+
     Json::Value root;
     cJsonUtil::LoadJson(conf_path, root);
     Json::Value camera_json = cJsonUtil::ParseAsValue("camera", root);
     mGroundPNGPath = cJsonUtil::ParseAsString(GROUND_PNG_PATH_KEY, root);
+    mEnableGround = cJsonUtil::ParseAsBool("enable_ground", root);
+    mGroundHeight = cJsonUtil::ParseAsfloat("ground_height", root);
+    mEnableGrid = false;
+    SetGroundHeight(mGroundHeight);
     cCameraFactory::ChangeCamera(camera_json);
     mCamera = cCameraFactory::getInstance();
+    mEnableCamAutoRot = cJsonUtil::ParseAsBool("enable_camera_auto_rot", root);
+    mEnableAxes = cJsonUtil::ParseAsBool("enable_axes", root);
     gAxesRenderResource = cRenderUtil::GetAxesRenderingResource();
+    gGroundRenderResource = cRenderUtil::GetGroundRenderingResource(
+        1e3, mGroundHeight, mGroundPNGPath);
+
     ClearRenderResource();
-    AddRenderResource(gAxesRenderResource);
+    if (mEnableAxes == true)
+        AddRenderResource({gAxesRenderResource});
+    AddRenderResource({gAxesRenderResource});
+    mGrid = std::make_shared<cRenderGrid>();
+    mGrid->GenGrid();
+    AddRenderResource(mGrid->GetRenderingResource());
+
     InitVulkan();
+}
+void cDrawScene::SetGroundHeight(float val)
+{
+    gGroundRenderResource =
+        cRenderUtil::GetGroundRenderingResource(1e3, val, mGroundPNGPath);
 }
 
 /**
  * \brief           Update the render
  */
-void cDrawScene::Update(FLOAT dt)
+void cDrawScene::Update(_FLOAT dt)
 {
     // update the perturb
     {
@@ -528,6 +535,10 @@ void cDrawScene::Update(FLOAT dt)
     }
 
     DrawFrame();
+    if (mEnableCamAutoRot)
+    {
+        mCamera->RotateAlongYAxis(0.3);
+    }
 }
 
 void cDrawScene::Resize(int w, int h)
@@ -631,6 +642,27 @@ void cDrawScene::Key(int key, int scancode, int action, int mods)
             mCamera->MoveLeft();
             break;
         }
+        case GLFW_KEY_LEFT_CONTROL:
+        {
+#ifdef __APPLE__
+            mMiddleButtonPress = true;
+            break;
+#endif
+        }
+        default:
+            break;
+        }
+    }
+    if (action == GLFW_RELEASE)
+    {
+        switch (key)
+        {
+        case GLFW_KEY_LEFT_CONTROL:
+#ifdef __APPLE__
+            mMiddleButtonPress = false;
+            mCamera->ResetFlag();
+#endif
+            break;
         default:
             break;
         }
@@ -641,6 +673,7 @@ void cDrawScene::Key(int key, int scancode, int action, int mods)
 
 void cDrawScene::Scroll(float xoff, float yoff)
 {
+    // printf("scroll %.1f %.1f\n", xoff, yoff);
     if (yoff > 0)
         mCamera->MoveForward();
     else if (yoff < 0)
@@ -679,22 +712,22 @@ void cDrawScene::InitVulkan()
     CreateTextureImageView();
     CreateTextureSampler();
     CreateTriangleBufferSim();
-    CreateVertexBufferGround();
     CreateLineBuffer();
     CreatePointBuffer();
     CreateMVPUniformBuffer();
 
-    CreateDescriptorPool();
-    CreateDescriptorSets();
-    CreateCommandBuffers();
+    // CreateDescriptorPool(mDescriptorPool, 1);
+    // CreateDescriptorSets(mDescriptorSets, 1); // recreate
+    // CreateCommandBuffers();                   // create
     CreateSemaphores();
 }
 
-extern uint32_t findMemoryType(VkPhysicalDevice phy_device, uint32_t typeFilter,
-                               VkMemoryPropertyFlags props);
-void cDrawScene::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
-                              VkMemoryPropertyFlags props, VkBuffer &buffer,
-                              VkDeviceMemory &buffer_memory)
+uint32_t findMemoryType(VkPhysicalDevice phy_device, uint32_t typeFilter,
+                        VkMemoryPropertyFlags props);
+void CreateBuffer(VkDevice mDevice, VkPhysicalDevice mPhysicalDevice,
+                  VkDeviceSize size, VkBufferUsageFlags usage,
+                  VkMemoryPropertyFlags props, VkBuffer &buffer,
+                  VkDeviceMemory &buffer_memory)
 {
     // 1. create a vertex buffer
     VkBufferCreateInfo buffer_info{};
@@ -817,7 +850,7 @@ void cDrawScene::CreateTriangleBufferSim(int size)
 {
     mSimTriangleBuffer.mSize = size;
 
-    CreateBuffer(mSimTriangleBuffer.mSize,
+    CreateBuffer(mDevice, mPhysicalDevice, mSimTriangleBuffer.mSize,
                  VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -842,8 +875,14 @@ void cDrawScene::CreateTriangleBufferSim(int size)
 */
 void cDrawScene::DrawFrame()
 {
-    mRenderResourceArray.push_back(gAxesRenderResource);
-
+    // 1. create descriptor set
+    // 2. change swap chain
+    // 3. record
+    // 4. draw
+    // CreateDescriptorSets(mDescriptorSets, 1);
+    if (mEnableAxes)
+        mRenderResourceArray.push_back(gAxesRenderResource);
+    mRenderResourceArray.push_back(mGrid->GetRenderingResource()[0]);
     uint32_t imageIndex;
     bool need_to_recreate_swapchain =
         FenceAndAcquireImageFromSwapchain(imageIndex);
@@ -851,17 +890,17 @@ void cDrawScene::DrawFrame()
     // updating the uniform buffer values
     // cTimeUtil::Begin("update_buffers");
     UpdateMVPUniformValue(imageIndex);
-    UpdateVertexBufferGround(imageIndex);
-    UpdateVertexBufferSimObj(imageIndex);
+    // UpdateVertexBufferGround(imageIndex);
+    UpdateTriangleBufferSimObj(imageIndex);
     UpdateLineBuffer(imageIndex);
     UpdatePointBuffer(imageIndex);
     // cTimeUtil::End("update_buffers");
-    if (true == NeedRecreateCommandBuffers())
-    {
-        DestoryCommandBuffers();
-        mBufferReallocated = false;
-        CreateCommandBuffers();
-    }
+    // if (true == NeedRecreateCommandBuffers())
+    // {
+    DestoryCommandBuffers();
+    // mBufferReallocated = false;
+    // CreateCommandBuffers();
+    // }
 
     // 2. submitting the command buffer
     std::vector<VkCommandBuffer> cmds = {mCommandBuffers[imageIndex]};
@@ -901,7 +940,7 @@ void cDrawScene::UpdatePointBuffer(int idx)
         int new_size = GetNewSize(mPointDrawBuffer.mSize, buffer_size);
         CreatePointBuffer(new_size);
 
-        printf("[warn] point draw buffer size %lu < resource size %lu, "
+        printf("[warn] point draw buffer size %d < resource size %d, "
                "reallocate! reallocate %d\n",
                mPointDrawBuffer.mSize, buffer_size, new_size);
         mBufferReallocated = true;
@@ -1147,7 +1186,8 @@ void cDrawScene::CreateMVPUniformBuffer()
     // create each uniform object buffer
     for (size_t i = 0; i < mSwapChainImages.size(); i++)
     {
-        CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        CreateBuffer(mDevice, mPhysicalDevice, bufferSize,
+                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                      mMVPUniformBuffers[i], mMVPUniformBuffersMemory[i]);
@@ -1238,7 +1278,7 @@ tVector4 cDrawScene::GetPerturbOrigin(const tVector4 &cursor_world_pos) const
     return perturb_origin;
 }
 
-void cDrawScene::UpdateVertexBufferSimObj(int image_idx)
+void cDrawScene::UpdateTriangleBufferSimObj(int image_idx)
 {
     int num_of_ele = 0;
     for (auto &x : mRenderResourceArray)
@@ -1253,8 +1293,8 @@ void cDrawScene::UpdateVertexBufferSimObj(int image_idx)
     if (buffer_size > mSimTriangleBuffer.mSize)
     {
         int new_size = GetNewSize(mSimTriangleBuffer.mSize, buffer_size);
-        printf("[warn] tri draw buffer size %lu < resource size %lu, "
-               "reallocate! reallocate %d\n",
+        printf("[warn] tri draw buffer size %d < resource size %d, "
+               "reallocate to %d\n",
                mSimTriangleBuffer.mSize, buffer_size, new_size);
         CreateTriangleBufferSim(new_size);
         mBufferReallocated = true;
@@ -1262,7 +1302,8 @@ void cDrawScene::UpdateVertexBufferSimObj(int image_idx)
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
-    CreateBuffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    CreateBuffer(mDevice, mPhysicalDevice, buffer_size,
+                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                  stagingBuffer, stagingBufferMemory);
@@ -1295,104 +1336,139 @@ void cDrawScene::UpdateVertexBufferSimObj(int image_idx)
 /**
  * \brief           connect the vkBuffer with the descriptor pool
  */
-void cDrawScene::CreateDescriptorPool()
+void cDrawScene::CreateDescriptorPool(VkDescriptorPool &desc_pool,
+                                      int num_resources) const
 {
-    // VkDescriptorPoolSize poolSize{};
-    // poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    // poolSize.descriptorCount =
-    // static_cast<uint32_t>(mSwapChainImages.size());
-
-    // VkDescriptorPoolCreateInfo poolInfo{};
-    // poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    // poolInfo.poolSizeCount = 1;
-    // poolInfo.pPoolSizes = &poolSize;
-
-    // poolInfo.maxSets = static_cast<uint32_t>(mSwapChainImages.size());
-
-    // if (vkCreateDescriptorPool(mDevice, &poolInfo, nullptr, &mDescriptorPool)
-    // != VK_SUCCESS)
-    // {
-    //     throw std::runtime_error("failed to create descriptor pool!");
-    // }
     std::array<VkDescriptorPoolSize, 2> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount =
-        static_cast<uint32_t>(mSwapChainImages.size());
+        num_resources * static_cast<uint32_t>(mSwapChainImages.size());
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount =
-        static_cast<uint32_t>(mSwapChainImages.size());
+        num_resources * static_cast<uint32_t>(mSwapChainImages.size());
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(mSwapChainImages.size());
+    poolInfo.maxSets =
+        num_resources * static_cast<uint32_t>(mSwapChainImages.size());
 
-    if (vkCreateDescriptorPool(mDevice, &poolInfo, nullptr, &mDescriptorPool) !=
+    if (vkCreateDescriptorPool(mDevice, &poolInfo, nullptr, &desc_pool) !=
         VK_SUCCESS)
     {
         throw std::runtime_error("failed to create descriptor pool!");
     }
 }
-
-void cDrawScene::CreateDescriptorSets()
-
+#include "scenes/TextureManager.h"
+void cDrawScene::CreateDescriptorSets(VkDescriptorSetArray &desc_sets) const
 {
+    int n_resources = mRenderResourceArray.size();
     // std::cout << "begin to create descriptor set\n";
     // create the descriptor set
-    std::vector<VkDescriptorSetLayout> layouts(mSwapChainImages.size(),
+    int num_of_desc = n_resources * mSwapChainImages.size();
+    std::vector<VkDescriptorSetLayout> layouts(num_of_desc,
                                                mDescriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = mDescriptorPool;
-    allocInfo.descriptorSetCount =
-        static_cast<uint32_t>(mSwapChainImages.size());
+    allocInfo.descriptorSetCount = num_of_desc;
     allocInfo.pSetLayouts = layouts.data();
 
-    mDescriptorSets.resize(mSwapChainImages.size());
-    if (vkAllocateDescriptorSets(mDevice, &allocInfo, mDescriptorSets.data()) !=
+    desc_sets.resize(num_of_desc);
+    // printf("[debug] create %d desc sets\n", num_of_desc);
+    if (vkAllocateDescriptorSets(mDevice, &allocInfo, desc_sets.data()) !=
         VK_SUCCESS)
     {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
     // create each descriptor
+
     // mSwapChainImages; mUniformBuffers;
-    for (size_t i = 0; i < mSwapChainImages.size(); i++)
+    auto tex_manager = GetTextureManager();
+    for (size_t res_id = 0; res_id < n_resources; res_id++)
     {
-        // printf("---------------%d----------------\n", i);
-        VkDescriptorBufferInfo mvpbufferinfo{};
-        mvpbufferinfo.buffer = mMVPUniformBuffers[i];
-        mvpbufferinfo.offset = 0;
-        mvpbufferinfo.range = sizeof(MVPUniformBufferObject);
+        auto mat = mRenderResourceArray[res_id]->mMaterialPtr;
+        std::string tex_path = (mat == nullptr) ? "" : mat->mTexImgPath;
 
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = mTextureImageView;
-        imageInfo.sampler = mTextureSampler;
+        int tex_id = tex_manager->FetchTextureId(
+            mDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, tex_path);
+        cTextureInfoPtr tex_info = tex_manager->GetTextureInfo(tex_id);
 
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        // for uniform code, we must find an alternative texture pointer, in
+        // order to avoid the validation error
 
-        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[0].dstSet = mDescriptorSets[i];
-        descriptorWrites[0].dstBinding = 0;
-        descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &mvpbufferinfo;
-
+        if (tex_info == nullptr)
         {
-
-            descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[1].dstSet = mDescriptorSets[i];
-            descriptorWrites[1].dstBinding = 1;
-            descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType =
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorWrites[1].descriptorCount = 1;
-            descriptorWrites[1].pImageInfo = &imageInfo;
+            int num_of_tex = tex_manager->GetNumOfTextures();
+            // printf("num of tex %d\n", num_of_tex);
+            for (int i = 0; i < num_of_tex; i++)
+            {
+                std::string tex_name = tex_manager->GetTextureName(i);
+                auto cur_tex = tex_manager->GetTextureInfo(i);
+                uint size = cur_tex->GetBufSize();
+                // printf("tex %d name %s size %d\n", i, tex_name.c_str(),
+                // size);
+                if (size > 0)
+                {
+                    tex_info = cur_tex;
+                    // printf("select tex %d as an alternative\n", i);
+                    break;
+                }
+            }
         }
-        vkUpdateDescriptorSets(mDevice, descriptorWrites.size(),
-                               descriptorWrites.data(), 0, nullptr);
+        SIM_ASSERT(tex_info != nullptr);
+
+        for (size_t img_id = 0; img_id < mSwapChainImages.size(); img_id++)
+        {
+            // printf("---------------%d----------------\n", i);
+            VkDescriptorBufferInfo mvpbufferinfo{};
+            mvpbufferinfo.buffer = mMVPUniformBuffers[img_id];
+            mvpbufferinfo.offset = 0;
+            mvpbufferinfo.range = sizeof(MVPUniformBufferObject);
+
+            VkDescriptorImageInfo imageInfo{};
+            // if (tex_info != nullptr)
+            // set up texture image info
+            {
+                imageInfo.imageLayout =
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+                imageInfo.imageView = tex_info->mTextureImageView;
+                imageInfo.sampler = mTextureSampler;
+            }
+
+            // we have n_groups * n_swap descriptors, but we need to write two
+            // times
+            std::vector<VkWriteDescriptorSet> descriptorWrites(2);
+            int desc_set_id = res_id * mSwapChainImages.size() + img_id;
+            // printf("for group %d, swap chain %d, update desc set %d\n", g_id,
+            //        img_id, desc_set_id);
+            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[0].dstSet = desc_sets[desc_set_id];
+            descriptorWrites[0].dstBinding = 0;
+            descriptorWrites[0].dstArrayElement = 0;
+            descriptorWrites[0].descriptorType =
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrites[0].descriptorCount = 1;
+            descriptorWrites[0].pBufferInfo = &mvpbufferinfo;
+
+            // set for texture
+            // if (tex_info != nullptr)
+            {
+                descriptorWrites[1].sType =
+                    VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[1].dstSet = desc_sets[desc_set_id];
+                descriptorWrites[1].dstBinding = 1;
+                descriptorWrites[1].dstArrayElement = 0;
+                descriptorWrites[1].descriptorType =
+                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                descriptorWrites[1].descriptorCount = 1;
+                descriptorWrites[1].pImageInfo = &imageInfo;
+            }
+            vkUpdateDescriptorSets(mDevice, descriptorWrites.size(),
+                                   descriptorWrites.data(), 0, nullptr);
+        }
     }
     // std::cout << "end to create descriptor set\n";
     // exit(0);
@@ -1460,97 +1536,198 @@ void cDrawScene::CreateCommandBuffers()
     }
     // SIM_INFO("Create Command buffers succ");
 }
-
-void cDrawScene::CreateVertexBufferGround()
+tMaterialPushConstant::tMaterialPushConstant()
 {
-    if (gEnableGround)
-    {
-        VkDeviceSize buffer_size =
-            sizeof(ground_vertices[0]) * ground_vertices.size();
 
-        mGroundTriangleBuffer.mSize = buffer_size;
-        // 5. copy the vertex data to the buffer
-        CreateBuffer(
-            mGroundTriangleBuffer.mSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            mGroundTriangleBuffer.mBuffer, mGroundTriangleBuffer.mMemory);
-        mGroundTriangleBuffer.mIsCreated = true;
-    }
+    Ka = glm::vec4(1, 1, 1, 1);
+    Kd = glm::vec4(1, 1, 1, 1);
+    Ks = glm::vec4(1, 1, 1, 1);
+
+    Ns = 64;
+    enable_texture = false;
+    enable_phongmodel = true;
+    enable_basic_color = false;
 }
-
-void cDrawScene::UpdateVertexBufferGround(int idx)
+void cDrawScene::CreateTriangleCommandBuffers(int img_id)
 {
-    if (gEnableGround == false)
-        return;
-    // update
-    VkDeviceSize buffer_size =
-        sizeof(ground_vertices[0]) * ground_vertices.size();
-
-    // 5. copy the vertex data to the buffer
-    void *data = nullptr;
-    // map the memory to "data" ptr;
-
-    vkMapMemory(mDevice, mGroundTriangleBuffer.mMemory, 0, buffer_size, 0,
-                &data);
-
-    // write the data
-    memcpy(data, ground_vertices.data(), buffer_size);
-
-    // unmap
-    vkUnmapMemory(mDevice, mGroundTriangleBuffer.mMemory);
-}
-
-void cDrawScene::CreateTriangleCommandBuffers(int i)
-{
-    vkCmdBindPipeline(mCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+    vkCmdBindPipeline(mCommandBuffers[img_id], VK_PIPELINE_BIND_POINT_GRAPHICS,
                       mTriangleGraphicsPipeline);
-    if (gEnableGround == true)
+
+    /*
+        different swapchain_img_id
+            for different group (different texture)
+                1. different descriptor set
+                2. different offset
+                3. different number of ele
+    */
+    uint cur_off = 0;
+    int n_resources = mRenderResourceArray.size();
+    mCmdBufferRecordInfo.mCmdBufferRecorded_tri_size.resize(n_resources);
+    int render_id = 0;
+    for (int res_id = 0; res_id < n_resources; res_id++)
     {
-        VkBuffer vertexBuffers[] = {mGroundTriangleBuffer.mBuffer};
-        // VkBuffer vertexBuffers[] = {mVertexBufferGround, mVertexBufferSim};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(mCommandBuffers[i], 0, 1, vertexBuffers,
-                               offsets);
-
-        // update the uniform objects (descriptors)
-        vkCmdBindDescriptorSets(
-            mCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
-            mPipelineLayout, 0, 1, &mDescriptorSets[i], 0, nullptr);
-
-        // draaaaaaaaaaaaaaaaaaaaaaaaaaaaw!
-        // uint32_t triangle_size =  / 3;
-
-        vkCmdDraw(mCommandBuffers[i], ground_vertices.size(), 1, 0, 0);
-    }
-
-    // get num of triangle buffer
-    int num_of_ele_tri = GetNumOfTriangleVertices();
-    if (num_of_ele_tri > 0)
-    {
-
         VkBuffer vertexBuffers[] = {mSimTriangleBuffer.mBuffer};
         // VkBuffer vertexBuffers[] = {, mVertexBufferSim};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(mCommandBuffers[i], 0, 1, vertexBuffers,
+        VkDeviceSize offsets[] = {cur_off * sizeof(float)};
+        vkCmdBindVertexBuffers(mCommandBuffers[img_id], 0, 1, vertexBuffers,
                                offsets);
 
         // update the uniform objects (descriptors)
-        vkCmdBindDescriptorSets(
-            mCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
-            mPipelineLayout, 0, 1, &mDescriptorSets[i], 0, nullptr);
 
+        uint desc_set_id = res_id * mSwapChainImages.size() + img_id;
+        // printf("for grp %d swap chain %d, use desc set %d to draw
+        // triangle\n",
+        //        grp_id, img_id, desc_set_id);
+        vkCmdBindDescriptorSets(
+            mCommandBuffers[img_id], VK_PIPELINE_BIND_POINT_GRAPHICS,
+            mPipelineLayout, 0, 1, &(mDescriptorSets[desc_set_id]), 0, nullptr);
+
+        int num_of_ele_in_buf =
+            mRenderResourceArray[res_id]->mTriangleBuffer.mNumOfEle;
+        int num_of_v = num_of_ele_in_buf / RENDERING_SIZE_PER_VERTICE;
+        // std::cout << "num of ele in buf " << num_of_ele_in_buf << std::endl;
+        // std::cout << "num of v in buf " << num_of_v << std::endl;
+        {
+            auto cur_render_res = mRenderResourceArray[res_id];
+            tMaterialPushConstant constants;
+            if (cur_render_res->mMaterialPtr == nullptr)
+            {
+                constants.Ka = glm::vec4(1, 1, 1, 1);
+                constants.Kd = glm::vec4(1, 1, 1, 1);
+                constants.Ks = glm::vec4(1, 1, 1, 1);
+                constants.Ns = 64;
+                constants.enable_texture = false;
+                constants.enable_phongmodel = false;
+                constants.enable_basic_color = false;
+            }
+            else
+            {
+                auto mat = cur_render_res->mMaterialPtr;
+
+                constants.Ka = glm::vec4(mat->Ka[0], mat->Ka[1], mat->Ka[2], 1);
+                constants.Kd = glm::vec4(mat->Kd[0], mat->Kd[1], mat->Kd[2], 1);
+                constants.Ks = glm::vec4(mat->Ks[0], mat->Ks[1], mat->Ks[2], 1);
+                constants.Ns = mat->Ns;
+                constants.enable_phongmodel = true;
+                constants.enable_basic_color = false;
+                constants.enable_texture =
+                    cur_render_res->mMaterialPtr->mEnableTexutre;
+                // std::cout << "Kd = " << mat->Kd.transpose() << std::endl;
+            }
+            vkCmdPushConstants(mCommandBuffers[img_id], mPipelineLayout,
+                               VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                               sizeof(tMaterialPushConstant), &constants);
+
+            vkCmdDraw(mCommandBuffers[img_id], num_of_v, 1, 0, 0);
+            cur_off += num_of_ele_in_buf;
+        }
         // draaaaaaaaaaaaaaaaaaaaaaaaaaaaw!
         // uint32_t triangle_size =  / 3;
         // const float *draw_buffer = mRenderResource->mTriangleBuffer.mBuffer;
-        vkCmdDraw(mCommandBuffers[i], num_of_ele_tri, 1, 0, 0);
-        mCmdBufferRecordInfo.mCmdBufferRecorded_tri_size = num_of_ele_tri;
+
+        // vk cmd draw, num of triangles' vertices = tri_buf_size /
+        // RENDERING_PER_VERTEX;
+        // printf("draw group %d, num tri buffer size %d, num of vertices %d, "
+        //        "offset %d\n",
+        //        grp_id, group_info_arr[grp_id].mNumTriBufferSize, cur_num_ele,
+        //        cur_off);
+
+        // old
+        // {
+        //     auto cur_grp_info = group_info_arr[grp_id];
+        //     for (auto render_res_ind : cur_grp_info.mRenderResourceId)
+        //     {
+        //         auto cur_render_res = mRenderResourceArray[render_res_ind];
+
+        //         std::cout << "buf size = "
+        //                   << cur_render_res->mTriangleBuffer.mNumOfEle
+        //                   << std::endl;
+        //         int cur_num_vertex =
+        //         cur_render_res->mTriangleBuffer.mNumOfEle /
+        //                              RENDERING_SIZE_PER_VERTICE;
+        //         int cur_num_tri = cur_num_vertex / 3;
+
+        //         for (int i = 0; i < cur_num_tri; i++)
+        //         {
+        //             int bias = i * 3 * RENDERING_SIZE_PER_VERTICE;
+        //             printf(
+        //                 "v0 %.4f %.4f %.4f v1 %.4f %.4f %.4f v2 %.4f %.4f "
+        //                 "%.4f\n",
+        //                 cur_render_res->mTriangleBuffer.mBuffer[bias + 0],
+        //                 cur_render_res->mTriangleBuffer.mBuffer[bias + 1],
+        //                 cur_render_res->mTriangleBuffer.mBuffer[bias + 2],
+
+        //                 cur_render_res->mTriangleBuffer
+        //                     .mBuffer[bias + 0 + RENDERING_SIZE_PER_VERTICE],
+        //                 cur_render_res->mTriangleBuffer
+        //                     .mBuffer[bias + 1 + RENDERING_SIZE_PER_VERTICE],
+        //                 cur_render_res->mTriangleBuffer
+        //                     .mBuffer[bias + 2 + RENDERING_SIZE_PER_VERTICE],
+
+        //                 cur_render_res->mTriangleBuffer
+        //                     .mBuffer[bias + 0 + 2 *
+        //                     RENDERING_SIZE_PER_VERTICE],
+        //                 cur_render_res->mTriangleBuffer
+        //                     .mBuffer[bias + 1 + 2 *
+        //                     RENDERING_SIZE_PER_VERTICE],
+        //                 cur_render_res->mTriangleBuffer
+        //                     .mBuffer[bias + 2 +
+        //                              2 * RENDERING_SIZE_PER_VERTICE]);
+        //         }
+        //         if (cur_num_vertex == 0)
+        //             continue;
+        //         // mRenderResourceArray
+        //         tMaterialPushConstant constants;
+
+        //         if (cur_render_res->mMaterialPtr == nullptr)
+        //         {
+        //             constants.Ka = glm::vec4(1, 1, 1, 1);
+        //             constants.Kd = glm::vec4(1, 1, 1, 1);
+        //             constants.Ks = glm::vec4(1, 1, 1, 1);
+        //             constants.Ns = 64;
+        //             constants.enable_texture = false;
+        //         }
+        //         else
+        //         {
+        //             auto mat = cur_render_res->mMaterialPtr;
+
+        //             constants.Ka =
+        //                 glm::vec4(mat->Ka[0], mat->Ka[1], mat->Ka[2], 1);
+        //             constants.Kd =
+        //                 glm::vec4(mat->Kd[0], mat->Kd[1], mat->Kd[2], 1);
+        //             constants.Ks =
+        //                 glm::vec4(mat->Ks[0], mat->Ks[1], mat->Ks[2], 1);
+        //             constants.Ns = mat->Ns;
+        //             constants.enable_phongmodel = true;
+        //             constants.enable_texture =
+        //                 cur_render_res->mMaterialPtr->mEnableTexutre;
+        //         }
+        //         vkCmdPushConstants(mCommandBuffers[img_id], mPipelineLayout,
+        //                            VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+        //                            sizeof(tMaterialPushConstant),
+        //                            &constants);
+        //         printf("resource %d draw vertices %d\n", render_id++,
+        //                cur_num_vertex);
+        //         printf("0------\n");
+        //         vkCmdDraw(mCommandBuffers[img_id], cur_num_vertex, 1, 0, 0);
+        //         cur_off += cur_render_res->mTriangleBuffer.mNumOfEle;
+        //     }
+        // }
     }
+    // get num of triangle buffer
+    // int num_of_ele_tri = GetNumOfTriangleVertices();
+    // if (num_of_ele_tri > 0)
+    // {
+
+    // }
 }
 
-void cDrawScene::AddRenderResource(cRenderResourcePtr render_resource_array)
+void cDrawScene::AddRenderResource(
+    std::vector<cRenderResourcePtr> render_resource_array)
 {
-    mRenderResourceArray.push_back(render_resource_array);
+    mRenderResourceArray.insert(mRenderResourceArray.end(),
+                                render_resource_array.begin(),
+                                render_resource_array.end());
 }
 
 void cDrawScene::ClearRenderResource() { mRenderResourceArray.clear(); }
@@ -1567,12 +1744,13 @@ bool cDrawScene::NeedRecreateCommandBuffers()
 
     // );
     // check current buffer size, and previously recorded buffer size
-    return mBufferReallocated == true ||
-           mCmdBufferRecordInfo.mCmdBufferRecorded_line_size !=
-               GetNumOfLineVertices() ||
-           mCmdBufferRecordInfo.mCmdBufferRecorded_tri_size !=
-               GetNumOfTriangleVertices() ||
-           mCmdBufferRecordInfo.mCmdBufferRecorded_point_size !=
-               GetNumOfDrawPoints();
+    return true;
+    // return mBufferReallocated == true ||
+    //        mCmdBufferRecordInfo.mCmdBufferRecorded_line_size !=
+    //            GetNumOfLineVertices() ||
+    //        mCmdBufferRecordInfo.mCmdBufferRecorded_tri_size !=
+    //            GetNumOfTriangleVertices() ||
+    //        mCmdBufferRecordInfo.mCmdBufferRecorded_point_size !=
+    //            GetNumOfDrawPoints();
 }
 void cDrawScene::DestoryCommandBuffers() {}

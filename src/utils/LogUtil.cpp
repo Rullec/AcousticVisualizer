@@ -1,7 +1,7 @@
 #include "LogUtil.h"
 #include "utils/DefUtil.h"
 #include <cstdarg>
-
+tLogger cLogUtil::mGlobalLogger = cLogUtil::CreateLogger("Global");
 void cLogUtil::SetLoggingLevel(const std::string &level_name)
 {
     spdlog::set_level(static_cast<spdlog::level::level_enum>(

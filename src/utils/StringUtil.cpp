@@ -1,6 +1,7 @@
 #include "StringUtil.h"
 
-std::vector<std::string> cStringUtil::SplitString(const std::string &s_, const std::string &delimiter)
+std::vector<std::string> cStringUtil::SplitString(const std::string &s_,
+                                                  const std::string &delimiter)
 {
     size_t pos = 0;
     std::string token;
@@ -43,14 +44,16 @@ std::string cStringUtil::Strip(std::string line)
     {
         cur_line = cur_line.substr(1, cur_line.size() - 1);
     }
-    while (cur_line[cur_line.size() - 1] == ' ' || cur_line[cur_line.size() - 1] == '\n')
+    while (cur_line[cur_line.size() - 1] == ' ' ||
+           cur_line[cur_line.size() - 1] == '\n')
     {
         cur_line = cur_line.substr(0, cur_line.size() - 1);
     }
     return cur_line;
 }
 
-void cStringUtil::RemoveCommentLine(std::vector<std::string> &cont, std::string comment_delimeter /*= "#"*/)
+void cStringUtil::RemoveCommentLine(std::vector<std::string> &cont,
+                                    std::string comment_delimeter /*= "#"*/)
 {
     std::vector<std::string>::iterator it = cont.begin();
     while (it != cont.end())
@@ -67,4 +70,35 @@ void cStringUtil::RemoveCommentLine(std::vector<std::string> &cont, std::string 
             it++;
         }
     }
+}
+
+std::string
+cStringUtil::ConcatenateString(const std::vector<std::string> &str_vec,
+                               std::string delimiter)
+{
+    return cStringUtil::ConcatenateString(str_vec.begin(), str_vec.end(),
+                                          delimiter);
+}
+#include <algorithm>
+
+std::string
+cStringUtil::ConcatenateString(const std::vector<std::string>::const_iterator & begin,
+                               const std::vector<std::string>::const_iterator & end,
+                               std::string delimiter)
+{
+    std::string tmp = "";
+    auto cur = begin;
+    while (cur != end)
+    {
+        if ((*cur).size() != 0)
+        {
+            if (tmp.size() != 0)
+            {
+                tmp += delimiter;
+            }
+            tmp += *cur;
+        }
+        cur++;
+    }
+    return tmp;
 }

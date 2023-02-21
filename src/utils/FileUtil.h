@@ -1,6 +1,5 @@
 #pragma once
 #include "utils/BaseTypeUtil.h"
-#include "MathUtil.h"
 #include "utils/LogUtil.h"
 #include <fstream>
 #include <string>
@@ -26,11 +25,13 @@ public:
     static void CopyFile(const std::string &ori_name,
                          const std::string &des_name);
     static long int GetFileSize(const std::string &filename);
+    static std::string GetCWD(); // current working directrory
     static std::string GetExtension(const std::string &filename);
     static std::string GetFilename(const std::string &path);
     static std::string GetDir(const std::string &path);
     static std::string GetNoConflictDir(const std::string dir_base);
-    static std::string GetNoConflictFile(const std::string file_base, const std::string &suffic);
+    static std::string GetNoConflictFile(const std::string file_base,
+                                         const std::string &suffic);
     static void FilterFilesByExtension(std::vector<std::string> &files,
                                        const std::string &ext);
     static bool ExistsFile(const std::string &file_name);
@@ -42,8 +43,9 @@ public:
     static std::string ReadTextFile(const std::string &path);
 
     static bool ReadTable(const std::string &filename,
-                          std::vector<std::vector<FLOAT>> &out_buffer);
-    static std::vector<std::string> ReadFileAllLines(const std::string &filename);
+                          std::vector<std::vector<_FLOAT>> &out_buffer);
+    static std::vector<std::string>
+    ReadFileAllLines(const std::string &filename);
     // static bool ReadMatrix(const std::string &filename,
     //                        Eigen::MatrixXd &out_mat);
     // static bool WriteMatrix(const Eigen::MatrixXd &mat,
@@ -60,7 +62,6 @@ public:
 
 private:
     static std::string ReadTextFile(FILE *f);
-    static std::string mFileLockDir;
 
     inline static const tLogger mLogger = cLogUtil::CreateLogger("FileUtil");
 };

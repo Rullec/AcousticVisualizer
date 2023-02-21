@@ -1,9 +1,9 @@
 #include "utils/ImGuiUtil.h"
 #include "imgui.h"
-void cImGuiUtil::SliderScalar(std::string name, FLOAT *data, FLOAT min,
-                              FLOAT max, std::string format)
+void cImGuiUtil::SliderScalar(std::string name, _FLOAT *data, _FLOAT min,
+                              _FLOAT max, std::string format)
 {
-    if constexpr (std::is_same<float, FLOAT>::value)
+    if constexpr (std::is_same<float, _FLOAT>::value)
     {
         // float
         ImGui::SliderScalar(name.c_str(), ImGuiDataType_Float, data, &min, &max,
@@ -16,10 +16,10 @@ void cImGuiUtil::SliderScalar(std::string name, FLOAT *data, FLOAT min,
                             &max, format.c_str());
     }
 }
-void cImGuiUtil::SliderScalar3(std::string name, FLOAT *data, FLOAT min,
-                               FLOAT max, std::string format)
+void cImGuiUtil::SliderScalar3(std::string name, _FLOAT *data, _FLOAT min,
+                               _FLOAT max, std::string format)
 {
-    if constexpr (std::is_same<float, FLOAT>::value)
+    if constexpr (std::is_same<float, _FLOAT>::value)
     {
         // float
         ImGui::SliderScalarN(name.c_str(), ImGuiDataType_Float, data, 3, &min,
@@ -32,10 +32,10 @@ void cImGuiUtil::SliderScalar3(std::string name, FLOAT *data, FLOAT min,
                              &max, format.c_str());
     }
 }
-void cImGuiUtil::DragScalar(std::string name, FLOAT *data, FLOAT speed,
-                            FLOAT min, FLOAT max, std::string format)
+void cImGuiUtil::DragScalar(std::string name, _FLOAT *data, _FLOAT speed,
+                            _FLOAT min, _FLOAT max, std::string format)
 {
-    if constexpr (std::is_same<float, FLOAT>::value)
+    if constexpr (std::is_same<float, _FLOAT>::value)
     {
         // float
         ImGui::DragScalar(name.c_str(), ImGuiDataType_Float, data, speed, &min,
@@ -48,10 +48,10 @@ void cImGuiUtil::DragScalar(std::string name, FLOAT *data, FLOAT speed,
                           &max, format.c_str());
     }
 }
-void cImGuiUtil::DragScalar3(std::string name, FLOAT *data, FLOAT speed,
-                             FLOAT min, FLOAT max, std::string format)
+void cImGuiUtil::DragScalar3(std::string name, _FLOAT *data, _FLOAT speed,
+                             _FLOAT min, _FLOAT max, std::string format)
 {
-    if constexpr (std::is_same<float, FLOAT>::value)
+    if constexpr (std::is_same<float, _FLOAT>::value)
     {
         // float
         ImGui::DragScalarN(name.c_str(), ImGuiDataType_Float, data, 3, speed,

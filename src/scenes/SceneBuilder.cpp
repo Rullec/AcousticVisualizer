@@ -2,6 +2,7 @@
 #include "DrawScene.h"
 #include "DrawSceneImGUI.h"
 #include "utils/JsonUtil.h"
+#include "utils/json/json.h"
 #include "utils/LogUtil.h"
 
 cDrawScenePtr cSceneBuilder::BuildDrawScene(bool enable_draw_imgui /*= false */)

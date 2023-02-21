@@ -11,7 +11,7 @@ public:
     // calculate a continuous segment of time
     static void Begin(const std::string &name);
     static bool HasBegin(const std::string &name);
-    static FLOAT End(const std::string &name, bool silent = false);
+    static _FLOAT End(const std::string &name, bool silent = false);
 
     // calculate a discrete segment of time, lazy calculation until the final
     static void BeginLazy(const std::string &name);
@@ -20,7 +20,7 @@ public:
 
     static std::string GetSystemTime();
     static cTimePoint GetCurrentTime_chrono();
-    static FLOAT CalcTimeElaspedms(const cTimePoint &st, const cTimePoint &ed);
+    static _FLOAT CalcTimeElaspedms(const cTimePoint &st, const cTimePoint &ed);
 
 private:
     inline static std::map<const std::string,
@@ -30,6 +30,6 @@ private:
         const std::string,
         std::chrono::high_resolution_clock::time_point>::iterator time_it;
 
-    inline static std::map<const std::string, FLOAT>
+    inline static std::map<const std::string, _FLOAT>
         mLazyTimeTable; // record lazy accumulated time
 };

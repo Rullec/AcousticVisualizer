@@ -1,13 +1,13 @@
 #pragma once
 #include "DrawScene.h"
-#include "imgui.h"
+
 class cDrawSceneImGui : public cDrawScene
 {
 public:
     explicit cDrawSceneImGui();
     virtual ~cDrawSceneImGui();
     virtual void Init(const std::string &conf_path) override;
-    virtual void Update(FLOAT dt) override final;
+    virtual void Update(_FLOAT dt) override final;
     virtual void CursorMove(int xpos, int ypos) override;
     virtual void MouseButton(int button, int action, int mods) override;
     virtual void Scroll(float xoff, float yoff) override;
@@ -37,5 +37,6 @@ protected:
 
     std::vector<VkCommandBuffer> mCommandBufferImGui;
     std::vector<VkFramebuffer> mImGuiFrameBuffers;
-    FLOAT mCurFPS;
+    _FLOAT mCurFPS;
+    bool mRecordScreen = false;
 };

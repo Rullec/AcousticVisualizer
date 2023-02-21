@@ -1,10 +1,7 @@
 #pragma once
 #include "sim/BaseObject.h"
-#include "utils/MathUtil.h"
+#include "utils/EigenUtil.h"
 
-struct tTriangle;
-struct tEdge;
-struct tVertex;
 enum eKinematicBodyShape
 {
     KINEMATIC_PLANE = 0,
@@ -16,6 +13,7 @@ enum eKinematicBodyShape
     KINEMATIC_INVALID
 };
 
+SIM_DECLARE_STRUCT_AND_PTR(tMeshMaterialInfo);
 class cKinematicBody : public cBaseObject
 {
 public:
@@ -37,40 +35,42 @@ public:
     static eKinematicBodyShape BuildKinematicBodyShape(std::string type_str);
     bool IsStatic() const;
     eKinematicBodyShape GetBodyShape() const;
-
-    virtual void Update(FLOAT dt) override;
+    virtual void Update(_FLOAT dt) override;
     virtual void ApplyUserPerturbForceOnce(tPerturb *) override;
     // virtual void UpdatePos(FLOAT dt) override final;
     // virtual void UpdateRenderingResource() override final;
     virtual tMatrix4 GetCurWorldTransform() const; //
     void Reset() override;
-    virtual tVector4 CalcCOM() const;
-    virtual void MoveTranslation(const tVector4 &shift);
-    virtual void ApplyScale(FLOAT scale);
+    virtual tVector3 CalcCOM() const;
+    virtual void MoveTranslation(const tVector3 &shift);
+    virtual void ApplyScale(_FLOAT scale);
     virtual void SetCurrentPos(const tVector3 &pos);
+    virtual void SetCurrentTransform(const tMatrix4 &transmat);
+    virtual tVector3 GetCurrentPos() const;
 
 protected:
-    FLOAT mCurTime;
+    _FLOAT mCurTime;
     eKinematicBodyShape mBodyShape;
     std::string mCustomMeshPath;
-    tVectorX
-        mScaledMeshVertices;                 // the loaded obj mesh pos after AABB rescaled
-    tVector4 mTargetAABBDontUseDirectly;     // scale setting
-    tVector4 mScaleDontUseDirectly;          // scale setting explictly
-    tVector4 mInitPos;                       // init position for kinematic body
-    tVector4 mInitOrientation;               // init orietnation for kinect body,
-    tVector4 mTargetPos, mTargetOrientation; // target pos and orientation
+    tVectorX mScaledMeshVertices; // the loaded obj mesh pos after AABB rescaled
+    tVector3 mTargetAABBDontUseDirectly; // scale setting
+    tVector3 mScaleDontUseDirectly;      // scale setting explictly
+    tVector3 mInitPos;                   // init position for kinematic body
+    tVector3 mInitOrientation;           // init orietnation for kinect body,
+    tVector3 mTargetPos, mTargetOrientation; // target pos and orientation
     bool mIsStatic;
     tVector4 mPlaneEquation;
-    FLOAT mPlaneScale;
-    FLOAT mMovingElaspedTimeSec; // how many seconds does it cost for moving
-                                 // object?
-    tMatrix4 mCurWorldTransform; //
+    _FLOAT mPlaneScale;
+    _FLOAT mMovingElaspedTimeSec; // how many seconds does it cost for moving
+                                  // object?
+    tMatrix4 mCurWorldTransform;
+
     // methods
     void BuildCustomKinematicBody();
     void SetMeshPos();
     void BuildPlane();
     void UpdateCurWorldTransformByTime();
-    tVector4 GetScaleVec() const;
-    // virtual void InitDrawBuffer() override final;
+    tVector3 GetScaleVec() const;
 };
+
+SIM_DECLARE_PTR(cKinematicBody);

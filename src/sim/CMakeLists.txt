@@ -28,6 +28,8 @@ set(
     ${CMAKE_CURRENT_BINARY_DIR}/../protobuf/sploosh.pb.cc
     ../io/MatrixIO.cpp
     ../generic/precision_type.cpp
+    SNISR_DebugDraw.cpp
+    AcousticManager.cpp
 )
 
 add_library(sim_lib ${SIM_SRC})

@@ -5,7 +5,7 @@ cScene::cScene()
 }
 cScene::~cScene() {}
 
-void cScene::Update(FLOAT dt)
+void cScene::Update(_FLOAT dt)
 {
     mCurdt = dt;
     mCurTime += dt;

@@ -1,7 +1,7 @@
 #pragma once
 #include "Scene.h"
 #include "utils/DefUtil.h"
-#include "utils/MathUtil.h"
+#include "utils/EigenUtil.h"
 
 namespace Json
 {
@@ -16,8 +16,6 @@ enum eSceneType
     NUM_OF_SCENE_TYPES
 };
 
-struct tVertex;
-struct tEdge;
 struct tTriangle;
 struct tPerturb;
 
@@ -41,12 +39,9 @@ public:
     cSimScene();
     ~cSimScene();
     virtual void Init(const std::string &conf_path) override;
-    virtual void Update(FLOAT dt) override;
+    virtual void Update(_FLOAT dt) override;
     virtual void UpdateRenderingResource();
     virtual void Reset() override;
-    virtual const tVectorXf &GetTriangleDrawBuffer();
-    virtual const tVectorXf &GetEdgesDrawBuffer();
-    virtual const tVectorXf &GetPointDrawBuffer();
     static eSceneType BuildSceneType(const std::string &str);
     eSceneType GetSceneType() const;
     virtual bool CreatePerturb(tRayPtr ray);
@@ -64,7 +59,7 @@ public:
     virtual bool IsSimPaused() const;
     virtual void RunSimulator();
     virtual void UpdateImGui();
-    virtual cRenderResourcePtr GetRenderResource();
+    virtual std::vector<cRenderResourcePtr> GetRenderResource();
     virtual std::vector<cBaseObjectPtr> GetObjList() const;
 
 protected:
@@ -77,23 +72,18 @@ protected:
     std::vector<cBaseObjectPtr> mObjectList;
     cRaycasterPtr mRaycaster; // raycaster
 
-    tVectorXf mTriangleDrawBuffer, mEdgesDrawBuffer,
-        mPointDrawBuffer; // buffer to triangle buffer drawing (should use index
-                          // buffer to improve the velocity)
-    cRenderResourcePtr mRenderResource;
+    std::vector<cRenderResourcePtr> mRenderResource;
 
     // base methods
     void CalcDampingForce(const tVectorXf &vel, tVectorXf &damping) const;
     virtual void InitDrawBuffer();
     virtual void InitRaycaster(const Json::Value &conf);
+    virtual void UpdateRaycaster();
 
     void ClearForce(); // clear all forces
     void SaveCurrentScene();
 
     virtual void BuildObjects(const Json::Value &obj_conf_path);
-    virtual void CalcTriangleDrawBuffer(); //
-    virtual void CalcPointDrawBuffer();
-    virtual int CalcEdgesDrawBuffer(int st = 0); //
     virtual int GetNumOfVertices() const;
     virtual int GetNumOfFreedom() const;
     virtual int GetNumOfDrawEdges() const;

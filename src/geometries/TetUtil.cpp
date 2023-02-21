@@ -10,7 +10,7 @@
 /**
  * \brief       Calculate the volume for given tet
 */
-FLOAT cTetUtil::CalculateTetVolume(
+_FLOAT cTetUtil::CalculateTetVolume(
     const tVector4 &pos0,
     const tVector4 &pos1,
     const tVector4 &pos2,

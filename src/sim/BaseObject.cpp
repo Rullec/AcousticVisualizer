@@ -1,21 +1,23 @@
 #include "sim/BaseObject.h"
 #include "geometries/Primitives.h"
+#include "utils/ColorUtil.h"
 #include "utils/JsonUtil.h"
 #include "utils/LogUtil.h"
 #include "utils/MathUtil.h"
 #include "utils/RenderUtil.h"
-#include <string>
-#include "utils/ColorUtil.h"
 #include <set>
+#include <string>
 
-std::string gObjectTypeStr[eObjectType::NUM_OBJ_TYPES] = {
-    "KinematicBody", "AcousticBody"};
+static std::string gObjectTypeStr[eObjectType::NUM_OBJ_TYPES] = {
+    "Yarn", "KinematicBody", "AcousticBody", "AcousticManager",
+    "SNISR_Debug_Draw"};
 
 cBaseObject::cBaseObject(eObjectType type, int id_) : mType(type), mObjId(id_)
 {
     mObjName = "";
     mEnableDrawBuffer = true;
     mGravity.setZero();
+    mEnableTextureUV = false;
 }
 int cBaseObject::GetObjId() const { return this->mObjId; }
 /**
@@ -73,29 +75,56 @@ std::vector<tTrianglePtr> &cBaseObject::GetTriangleArrayRef()
 {
     return mTriangleArray;
 }
+void cBaseObject::ChangeVertexColor(int vid, const tVector3 &color)
+{
+    mVertexArray[vid]->mColor.segment(0, 3) = color;
+}
 
+void cBaseObject::ChangeVerticesColor(const tVector3 &color)
+{
+    for (int i = 0; i < GetNumOfVertices(); i++)
+    {
+        ChangeVertexColor(i, color);
+    }
+}
 /**
  * \brief           change triangle color
  */
 void cBaseObject::ChangeTriangleColor(int tri_id, const tVector3 &color)
 {
+    printf("begin to change tri %d color, num of tris %d\n", tri_id,
+           mTriangleArray.size());
     mTriangleArray[tri_id]->mColor.segment(0, 3) = color;
+    // tVector new_color = tVector4(color[0], color[1], color[2], mColorAlpha);
+    // mVertexArray[mTriangleArray[tri_id]->mId0]->mColor =
+    // new_color; mVertexArray[mTriangleArray[tri_id]->mId1]->mColor
+    // = new_color;
+    // mVertexArray[mTriangleArray[tri_id]->mId2]->mColor =
+    // new_color;
+}
+
+void cBaseObject::ChangeTrianglesColor(const tVector3 &color)
+{
+    for (int i = 0; i < GetNumOfTriangles(); i++)
+    {
+        ChangeTriangleColor(i, color);
+    }
 }
 
 /**
  * \brief           Calculate axis aligned bounding box
  */
 #include <cfloat>
-void cBaseObject::CalcAABB(tVector4 &min, tVector4 &max) const
+void cBaseObject::CalcAABB(tVector3 &min, tVector3 &max) const
 {
-    min = tVector4::Ones() * std::numeric_limits<float>::max();
-    max = tVector4::Ones() * std::numeric_limits<float>::max() * -1;
+    min = tVector3::Ones() * std::numeric_limits<float>::max();
+    max = tVector3::Ones() * std::numeric_limits<float>::max() * -1;
     for (auto &x : mVertexArray)
     {
         for (int i = 0; i < 3; i++)
         {
 
-            FLOAT val = x->mPos[i];
+            _FLOAT val = x->mPos[i];
             min[i] = (val < min[i]) ? val : min[i];
             max[i] = (val > max[i]) ? val : max[i];
         }
@@ -111,7 +140,6 @@ void cBaseObject::Init(const Json::Value &conf)
  * \brief           Update the normal of triangles
  */
 #include "utils/TimeUtil.hpp"
-// #include <iostream>
 void cBaseObject::UpdateTriangleNormal()
 {
     // we assume the rotation axis of v0, v1, v2 is the normal direction here
@@ -125,9 +153,9 @@ void cBaseObject::UpdateTriangleNormal()
         tVector4 tmp0 = (v1 - v0);
         tVector4 tmp1 = (v2 - v1);
         tVector4 res = tmp0.cross3(tmp1);
+        res[3] = 0;
         res.normalize();
         tri->mNormal = res;
-        // std::cout << tri->mNormal.transpose() << std::endl;
     }
     // cTimeUtil::End("update_normal");
 }
@@ -146,7 +174,7 @@ void cBaseObject::UpdateVertexNormalFromTriangleNormal()
     for (int t_id = 0; t_id < mTriangleArray.size(); t_id++)
     {
         auto x = mTriangleArray[t_id];
-        FLOAT tri_area = mTriangleInitArea[t_id];
+        _FLOAT tri_area = mTriangleInitArea[t_id];
         mVertexArray[x->mId0]->mNormal += x->mNormal * tri_area;
         mVertexArray[x->mId1]->mNormal += x->mNormal * tri_area;
         mVertexArray[x->mId2]->mNormal += x->mNormal * tri_area;
@@ -156,6 +184,7 @@ void cBaseObject::UpdateVertexNormalFromTriangleNormal()
     for (int i = 0; i < mVertexArray.size(); i++)
     {
         auto &v = mVertexArray[i];
+        v->mNormal[3] = 0;
         v->mNormal.normalize();
     }
     // cTimeUtil::End("update_v_normal");
@@ -164,10 +193,10 @@ void cBaseObject::UpdateVertexNormalFromTriangleNormal()
 /**
  * \brief           set the alpha channel for vertex color
  */
-void cBaseObject::SetVertexColorAlpha(FLOAT val)
+void cBaseObject::SetColorAlpha(_FLOAT val)
 {
     mColorAlpha = val;
-    for (auto &v : mVertexArray)
+    for (auto &v : mTriangleArray)
     {
         v->mColor[3] = val;
     }
@@ -176,14 +205,14 @@ void cBaseObject::SetVertexColorAlpha(FLOAT val)
 /**
  * \brief           get vertex color alpha
  */
-FLOAT cBaseObject::GetVertexColorAlpha() const { return mColorAlpha; }
+_FLOAT cBaseObject::GetColorAlpha() const { return mColorAlpha; }
 
 /**
  * \brief       calcualte the total area
  */
-FLOAT cBaseObject::CalcTotalArea() const
+_FLOAT cBaseObject::CalcTotalArea() const
 {
-    FLOAT total_area = 0;
+    _FLOAT total_area = 0;
     for (auto &t : mTriangleArray)
     {
         total_area += cMathUtil::CalcTriangleArea(mVertexArray[t->mId0]->mPos,
@@ -207,117 +236,6 @@ void cBaseObject::SetEdgeEdgeCollisionInfo(
 {
     this->mEdgeEdgeCollisionInfo = info;
 }
-
-void cBaseObject::CalcTriangleDrawBuffer(Eigen::Map<tVectorXf> &res,
-                                         int &st) const
-{
-    int old_st = st;
-    for (auto &tri : mTriangleArray)
-    {
-        cRenderUtil::CalcTriangleDrawBufferSingle(
-            this->mVertexArray[tri->mId0], this->mVertexArray[tri->mId1],
-            this->mVertexArray[tri->mId2], tri->mColor, res, st);
-    }
-    // 1. calculate affected vid
-    // for (auto info : mPointTriangleCollisionInfo)
-    // {
-    //     // handle triangle
-    //     if (info->mObj1->GetObjId() == mObjId)
-    //     {
-    //         // std::cout << "change triangle color " << info->mTriangleId1
-    //         //           << std::endl;
-    //         // change triangle color
-    //         res.segment(
-    //             old_st + 3 * RENDERING_SIZE_PER_VERTICE * info->mTriangleId1
-    //             +
-    //                 0 * RENDERING_SIZE_PER_VERTICE + 3,
-    //             4) = ColorShoJoHi;
-    //         res.segment(
-    //             old_st + 3 * RENDERING_SIZE_PER_VERTICE * info->mTriangleId1
-    //             +
-    //                 1 * RENDERING_SIZE_PER_VERTICE + 3,
-    //             4) = ColorShoJoHi;
-    //         res.segment(
-    //             old_st + 3 * RENDERING_SIZE_PER_VERTICE * info->mTriangleId1
-    //             +
-    //                 2 * RENDERING_SIZE_PER_VERTICE + 3,
-    //             4) = ColorShoJoHi;
-    //     }
-    // }
-    // for (auto info : mPointTriangleCollisionInfo)
-    // {
-    //     // handle triangle
-    //     if (info->mObj1->GetObjId() == mObjId)
-    //     {
-    //         // std::cout << "change triangle color " << info->mTriangleId1
-    //         //           << std::endl;
-    //         // change triangle color
-    //         res.segment(
-    //             old_st + 3 * RENDERING_SIZE_PER_VERTICE * info->mTriangleId1
-    //             +
-    //                 0 * RENDERING_SIZE_PER_VERTICE + 3,
-    //             4) = ColorShoJoHi;
-    //         res.segment(
-    //             old_st + 3 * RENDERING_SIZE_PER_VERTICE * info->mTriangleId1
-    //             +
-    //                 1 * RENDERING_SIZE_PER_VERTICE + 3,
-    //             4) = ColorShoJoHi;
-    //         res.segment(
-    //             old_st + 3 * RENDERING_SIZE_PER_VERTICE * info->mTriangleId1
-    //             +
-    //                 2 * RENDERING_SIZE_PER_VERTICE + 3,
-    //             4) = ColorShoJoHi;
-    //     }
-    // }
-}
-
-void cBaseObject::CalcPointDrawBuffer(Eigen::Map<tVectorXf> &res, int &st) const
-{
-    // std::cout << "v0 color = " << mVertexArray[0]->mColor.transpose()
-    // << std::endl;
-    int old_st = st;
-    for (auto &v : mVertexArray)
-    {
-        cRenderUtil::CalcPointDrawBufferSingle(v->mPos, v->mColor, res, st);
-    }
-}
-
-void cBaseObject::CalcEdgeDrawBuffer(Eigen::Map<tVectorXf> &res, int &st) const
-{
-    // std::set<int> affected_edge = {};
-    // for (auto &info : this->mEdgeEdgeCollisionInfo)
-    // {
-    //     if (info->mObj0->GetObjId() == mObjId)
-    //     {
-    //         affected_edge.insert(info->mEdgeId0);
-    //     }
-    //     else
-    //     {
-    //         affected_edge.insert(info->mEdgeId1);
-    //     }
-    // }
-
-    tVector4 normal = tVector4::Zero();
-
-    for (int e_id = 0; e_id < mEdgeArray.size(); e_id++)
-    {
-        auto e = mEdgeArray[e_id];
-        tVector4 color = e->mColor;
-        // if (affected_edge.find(e_id) != affected_edge.end())
-        // {
-        //     color = ColorPurple;
-        // }
-        // 1. get the normal of this edge
-        normal =
-            (mVertexArray[e->mId0]->mNormal + mVertexArray[e->mId1]->mNormal) /
-            2;
-
-        cRenderUtil::CalcEdgeDrawBufferSingle(mVertexArray[e->mId0],
-                                              mVertexArray[e->mId1], normal,
-                                              res, st, color);
-    }
-}
-
 void cBaseObject::Reset()
 {
     mPointTriangleCollisionInfo.clear();
@@ -336,4 +254,108 @@ void cBaseObject::CalcTriangleInitArea()
             mVertexArray[tri->mId0]->mPos, mVertexArray[tri->mId1]->mPos,
             mVertexArray[tri->mId2]->mPos);
     }
+}
+template <class dtype>
+void print_vec(std::string str, const std::vector<dtype> &vec)
+{
+    std::cout << str << std::endl;
+    for (auto &x : vec)
+    {
+        std::cout << x << " ";
+    }
+    std::cout << std::endl;
+}
+void cBaseObject::UpdateRenderResourceTriangles()
+{
+    int num_of_mater = mMatInfoArray.size();
+
+    // 1. validate material info for each triangles
+    tMeshMaterialInfo::ValidateMaterialInfo(mMatInfoArray,
+                                            this->GetNumOfTriangles());
+
+    // 2. calc for each material
+    mTriangleDrawBufferArray.resize(num_of_mater);
+    for (int mat_id = 0; mat_id < num_of_mater; mat_id++)
+    {
+        tVectorXf &buf = mTriangleDrawBufferArray[mat_id];
+
+        const auto &tri_id_array = mMatInfoArray[mat_id]->mTriIdArray;
+        // print_vec("material " + std::to_string(mat_id) + " tri id: ",
+        //           tri_id_array);
+        int num_of_tri_comp = tri_id_array.size();
+        buf.resize(num_of_tri_comp * RENDERING_SIZE_PER_VERTICE * 3);
+        buf.setConstant(std::nanf(""));
+
+        Eigen::Map<tVectorXf> map(buf.data(), buf.size());
+        printf("kin render resource id %d, draw vertices %d\n", mat_id,
+               num_of_tri_comp * 3);
+        int st = 0;
+        for (auto &t_id : tri_id_array)
+        {
+            const auto &t = mTriangleArray[t_id];
+            cRenderUtil::CalcTriangleDrawBufferSingle(
+                mVertexArray, t, t->mColor, map, st, mEnableTextureUV);
+        }
+    }
+}
+void cBaseObject::UpdateRenderResourceLines()
+{
+    mEdgeBuffer.resize(mEdgeArray.size() * RENDERING_SIZE_PER_VERTICE * 2);
+    mEdgeBuffer.noalias() = tVectorXf::Ones(mEdgeBuffer.size()) * std::nanf("");
+
+    int st = 0;
+    Eigen::Map<tVectorXf> map(mEdgeBuffer.data(), mEdgeBuffer.size());
+    for (auto e : mEdgeArray)
+    {
+        cRenderUtil::CalcEdgeDrawBufferSingle(
+            mVertexArray[e->mId0]->mPos, mVertexArray[e->mId1]->mPos,
+            tVector4::Zero(), map, st, ColorBlack);
+    }
+}
+void cBaseObject::UpdateRenderResourcePoints() { mPointDrawBuffer.resize(0); }
+void cBaseObject::UpdateRenderingResource(bool enable_edge /*= true*/)
+{
+    mRenderResource.clear();
+
+    UpdateRenderResourceTriangles();
+    if (enable_edge)
+        UpdateRenderResourceLines();
+    else
+    {
+        mEdgeBuffer.resize(0);
+    }
+    UpdateRenderResourcePoints();
+
+    // 2. point, edges, and the first triangle groups
+
+    // other triangle groups
+    for (int i = 0; i < mTriangleDrawBufferArray.size(); i++)
+    {
+        auto res = std::make_shared<cRenderResource>();
+        res->mName = this->mObjName + "_resource" + std::to_string(i);
+
+        res->mTriangleBuffer.mBuffer = mTriangleDrawBufferArray[i].data();
+        res->mTriangleBuffer.mNumOfEle = mTriangleDrawBufferArray[i].size();
+        res->mLineBuffer.mBuffer = this->mEdgeBuffer.data();
+        res->mLineBuffer.mNumOfEle = mEdgeBuffer.size();
+        res->mPointBuffer.mBuffer = mPointDrawBuffer.data();
+        res->mPointBuffer.mNumOfEle = mPointDrawBuffer.size();
+
+        res->mMaterialPtr = mMatInfoArray[i];
+        mRenderResource.push_back(res);
+    }
+}
+
+std::vector<cRenderResourcePtr> cBaseObject::GetRenderingResource() const
+{
+    return mRenderResource;
+}
+
+const std::vector<tVertexPtr> &cBaseObject::GetCollisionVertexArray() const
+{
+    return GetVertexArray();
+}
+const std::vector<tTrianglePtr> &cBaseObject::GetCollisionTriangleArray() const
+{
+    return GetTriangleArray();
 }

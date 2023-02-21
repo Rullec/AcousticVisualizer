@@ -1,9 +1,15 @@
 #pragma once
-#include "Primitives.h"
+#include "utils/EigenUtil.h"
+#include "utils/DefUtil.h"
+#include <vector>
+
 namespace Json
 {
 class Value;
 };
+SIM_DECLARE_STRUCT_AND_PTR(tVertex);
+SIM_DECLARE_STRUCT_AND_PTR(tEdge);
+SIM_DECLARE_STRUCT_AND_PTR(tTriangle);
 class cTriangulator
 {
 public:
@@ -27,11 +33,11 @@ public:
     static void
     RotateMaterialCoordsAfterReset(const tMatrix4 &init_mat_inv,
                                    std::vector<tVertexPtr> &vertices_array,
-                                   FLOAT fabric_uv_rotation_deg);
+                                   _FLOAT fabric_uv_rotation_deg);
 
-    static void RotateMaterialCoords(FLOAT cur_uv_rot_deg, FLOAT tar_uv_rot_deg,
+    static void RotateMaterialCoords(_FLOAT cur_uv_rot_deg, _FLOAT tar_uv_rot_deg,
                                      std::vector<tVertexPtr> &vertices_array);
-    static void DelaunayTriangulation(FLOAT cloth_width, FLOAT cloth_height,
+    static void DelaunayTriangulation(_FLOAT cloth_width, _FLOAT cloth_height,
                                       int target_num_of_vertices,
                                       std::vector<tVertexPtr> &v_array,
                                       std::vector<tEdgePtr> &e_array,
@@ -66,7 +72,7 @@ protected:
                                  std::vector<tVertexPtr> &vertices_array,
                                  std::vector<tEdgePtr> &edges_array,
                                  std::vector<tTrianglePtr> &triangles_array);
-    static void BuildRectVertices(FLOAT height, FLOAT width, int height_div,
+    static void BuildRectVertices(_FLOAT height, _FLOAT width, int height_div,
                                   int width_div,
                                   std::vector<tVertexPtr> &edges_array,
                                   bool add_vertices_perturb);
@@ -77,7 +83,7 @@ protected:
     inline static const std::string NUM_OF_VERTICES_KEY = "num_of_vertices",
                                     EDGE_ARRAY_KEY = "edge_array",
                                     TRIANGLE_ARRAY_KEY = "triangle_array";
-    static tEigenArr<tVector2> BuildRectangleBoundary(FLOAT cloth_width,
-                                                       FLOAT cloth_height,
-                                                       int num_of_vertices);
+    static tEigenArr<tVector2> BuildRectangleBoundary(_FLOAT cloth_width,
+                                                      _FLOAT cloth_height,
+                                                      int num_of_vertices);
 };

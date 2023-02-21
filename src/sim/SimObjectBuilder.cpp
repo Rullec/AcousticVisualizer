@@ -1,8 +1,11 @@
 #include "SimObjectBuilder.h"
-#include "sim/BaseObject.h"
 #include "sim/AcousticBody.h"
-#include "utils/JsonUtil.h"
+#include "sim/BaseObject.h"
 #include "sim/KinematicBodyBuilder.h"
+#include "sim/AcousticManager.h"
+#include "sim/SNISR_DebugDraw.h"
+#include "utils/JsonUtil.h"
+#include "utils/LogUtil.h"
 
 cBaseObjectPtr BuildSimObj(const Json::Value &conf, int id_)
 {
@@ -19,6 +22,16 @@ cBaseObjectPtr BuildSimObj(const Json::Value &conf, int id_)
     case eObjectType::ACOUSTICBODY_TYPE:
     {
         object = std::make_shared<cAcousticBody>(id_);
+        break;
+    }
+    case eObjectType::SNISR_DEBUG_DRAW_TYPE:
+    {
+        object = std::make_shared<cSNISRDebugDrawBall>(id_);
+        break;
+    }
+    case eObjectType::ACOUSTICMANAGER_TYPE:
+    {
+        object = std::make_shared<cAcousticManager>(id_);
         break;
     }
     default:

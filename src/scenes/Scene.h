@@ -8,10 +8,10 @@ public:
     explicit cScene();
     virtual ~cScene();
     virtual void Init(const std::string &conf_path) = 0;
-    virtual void Update(FLOAT dt);
+    virtual void Update(_FLOAT dt);
     virtual void Reset();
 
 protected:
-    FLOAT mCurdt;
-    FLOAT mCurTime;
+    _FLOAT mCurdt;
+    _FLOAT mCurTime;
 };

@@ -1,4 +1,5 @@
 #include "Triangulator.h"
+#include "geometries/Primitives.h"
 #include "utils/ColorUtil.h"
 #include "utils/LogUtil.h"
 #include <delaunator.hpp>
@@ -41,7 +42,8 @@ void add_edge_into_edge_array(std::vector<tEdgePtr> &edge_array,
         cur_edge->mTriangleId1 = contained_triangle_id;
     }
 }
-void cTriangulator::DelaunayTriangulation(FLOAT cloth_width, FLOAT cloth_height,
+void cTriangulator::DelaunayTriangulation(_FLOAT cloth_width,
+                                          _FLOAT cloth_height,
                                           int target_num_of_vertices,
                                           std::vector<tVertexPtr> &v_array,
                                           std::vector<tEdgePtr> &e_array,
@@ -57,20 +59,21 @@ void cTriangulator::DelaunayTriangulation(FLOAT cloth_width, FLOAT cloth_height,
     // tEigenArr<tVector2> v_lst = BuildRectangleBoundary(
     //     cloth_width, cloth_height, target_num_of_vertices);
 
-    // FLOAT min_dist_threshold =
-    //     std::sqrt((cloth_width * cloth_height / target_num_of_vertices) / M_PI);
+    // _FLOAT min_dist_threshold =
+    //     std::sqrt((cloth_width * cloth_height / target_num_of_vertices) /
+    //     M_PI);
     // while (v_lst.size() < target_num_of_vertices)
     // {
     //     // 1. generate new point
     //     tVector2 new_point = tVector2::Zero();
-    //     new_point[0] = cMathUtil::RandFloat(-cloth_width / 2, cloth_width / 2);
-    //     new_point[1] =
+    //     new_point[0] = cMathUtil::RandFloat(-cloth_width / 2, cloth_width /
+    //     2); new_point[1] =
     //         cMathUtil::RandFloat(-cloth_height / 2, cloth_height / 2);
     //     // 2. calculate min distance with others
-    //     FLOAT min_distance_with_others = std::numeric_limits<FLOAT>::max();
+    //     _FLOAT min_distance_with_others = std::numeric_limits<_FLOAT>::max();
     //     for (auto &v : v_lst)
     //     {
-    //         FLOAT cur_dist = (v - new_point).norm();
+    //         _FLOAT cur_dist = (v - new_point).norm();
     //         min_distance_with_others =
     //             SIM_MIN(min_distance_with_others, cur_dist);
     //     }
@@ -80,7 +83,7 @@ void cTriangulator::DelaunayTriangulation(FLOAT cloth_width, FLOAT cloth_height,
     // }
 
     // // 2. collect all vertices
-    // std::vector<FLOAT> coord_lst = {};
+    // std::vector<_FLOAT> coord_lst = {};
     // for (int i = 0; i < target_num_of_vertices; i++)
     // {
     //     const tVector2 &cur_v2d = v_lst[i];
@@ -150,7 +153,8 @@ void cTriangulator::DelaunayTriangulation(FLOAT cloth_width, FLOAT cloth_height,
     //                e->mTriangleId0, e->mTriangleId1);
     //         exit(1);
     //     }
-    //     // std::cout << "e " << i << " is boundary " << e->mIsBoundary << " tri0 "
+    //     // std::cout << "e " << i << " is boundary " << e->mIsBoundary << "
+    //     tri0 "
     //     //           << e->mTriangleId0 << " tri1 " << e->mTriangleId1
     //     //           << std::endl;
     //     e->mRawLength =
@@ -171,9 +175,9 @@ void cTriangulator::DelaunayTriangulation(FLOAT cloth_width, FLOAT cloth_height,
     //     auto cur_e = e_array[i];
 
     //     auto v0 = v_array[cur_e->mId0], v1 = v_array[cur_e->mId1];
-    //     FLOAT uv_dist = (v0->muv - v1->muv).norm(),
+    //     _FLOAT uv_dist = (v0->muv - v1->muv).norm(),
     //           cartesian_dist = (v0->mPos - v1->mPos).norm();
-    //     FLOAT diff = std::fabs(uv_dist - cartesian_dist);
+    //     _FLOAT diff = std::fabs(uv_dist - cartesian_dist);
     //     std::cout << "edge " << i << " v" << cur_e->mId0 << " to v"
     //               << cur_e->mId1 << " uv dist = " << uv_dist
     //               << " car dist = " << cartesian_dist << " diff = " << diff
@@ -181,28 +185,28 @@ void cTriangulator::DelaunayTriangulation(FLOAT cloth_width, FLOAT cloth_height,
     // }
 }
 
-tEigenArr<tVector2> cTriangulator::BuildRectangleBoundary(FLOAT width,
-                                                           FLOAT height,
-                                                           int num_of_vertices)
+tEigenArr<tVector2> cTriangulator::BuildRectangleBoundary(_FLOAT width,
+                                                          _FLOAT height,
+                                                          int num_of_vertices)
 {
-    FLOAT density = std::sqrt(height * width / num_of_vertices); // m per point
+    _FLOAT density = std::sqrt(height * width / num_of_vertices); // m per point
     int num_of_point_x_axis =
             SIM_MAX(static_cast<int>(std::round(width / density)), 2),
         num_of_point_y_axis =
             SIM_MAX(static_cast<int>(std::round(height / density)), 2);
-    FLOAT point_gap_x_axis = width / (num_of_point_x_axis - 1),
-          point_gap_y_axis = height / (num_of_point_y_axis - 1);
-    FLOAT left = -width / 2, right = width / 2, up = height / 2,
-          down = -height / 2;
+    _FLOAT point_gap_x_axis = width / (num_of_point_x_axis - 1),
+           point_gap_y_axis = height / (num_of_point_y_axis - 1);
+    _FLOAT left = -width / 2, right = width / 2, up = height / 2,
+           down = -height / 2;
     tEigenArr<tVector2> array = {};
 
     // bottom left -> bottom right
     for (int i = 1; i < num_of_point_x_axis; i++)
-        array.push_back(tVector2(left + i * point_gap_x_axis, down));
+        array.emplace_back(left + i * point_gap_x_axis, down);
 
     // bottom right -> up right
     for (int i = 1; i < num_of_point_y_axis; i++)
-        array.push_back(tVector2(right, down + i * point_gap_y_axis));
+        array.emplace_back(right, down + i * point_gap_y_axis);
 
     // up right -> up left
     for (int i = num_of_point_x_axis - 2; i >= 0; i--)

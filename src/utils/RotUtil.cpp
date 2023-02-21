@@ -10,7 +10,7 @@ tMatrix4 cRotUtil::TranslateMat(const tVector4 &trans)
     return mat;
 }
 
-tMatrix4 cRotUtil::ScaleMat(FLOAT scale)
+tMatrix4 cRotUtil::ScaleMat(_FLOAT scale)
 {
     return ScaleMat(tVector4::Ones() * scale);
 }
@@ -27,16 +27,16 @@ tMatrix4 cRotUtil::ScaleMat(const tVector4 &scale)
 tMatrix4 cRotUtil::RotateMat(const tVector4 &euler,
                              const eRotationOrder gRotationOrder)
 {
-    FLOAT x = euler[0];
-    FLOAT y = euler[1];
-    FLOAT z = euler[2];
+    _FLOAT x = euler[0];
+    _FLOAT y = euler[1];
+    _FLOAT z = euler[2];
 
-    FLOAT sinx = std::sin(x);
-    FLOAT cosx = std::cos(x);
-    FLOAT siny = std::sin(y);
-    FLOAT cosy = std::cos(y);
-    FLOAT sinz = std::sin(z);
-    FLOAT cosz = std::cos(z);
+    _FLOAT sinx = std::sin(x);
+    _FLOAT cosx = std::cos(x);
+    _FLOAT siny = std::sin(y);
+    _FLOAT cosy = std::cos(y);
+    _FLOAT sinz = std::sin(z);
+    _FLOAT cosz = std::cos(z);
 
     tMatrix4 mat = tMatrix4::Identity();
 
@@ -64,14 +64,14 @@ tMatrix4 cRotUtil::RotateMat(const tVector4 &euler,
     return mat;
 }
 
-tMatrix4 cRotUtil::RotateMat(const tVector4 &axis, FLOAT theta)
+tMatrix4 cRotUtil::RotateMat(const tVector4 &axis, _FLOAT theta)
 {
     assert(std::abs(axis.squaredNorm() - 1) < 0.0001);
-    FLOAT c = std::cos(theta);
-    FLOAT s = std::sin(theta);
-    FLOAT x = axis[0];
-    FLOAT y = axis[1];
-    FLOAT z = axis[2];
+    _FLOAT c = std::cos(theta);
+    _FLOAT s = std::sin(theta);
+    _FLOAT x = axis[0];
+    _FLOAT y = axis[1];
+    _FLOAT z = axis[2];
 
     tMatrix4 mat;
     mat << c + x * x * (1 - c), x * y * (1 - c) - z * s,
@@ -87,18 +87,18 @@ tMatrix4 cRotUtil::RotateMat(const tQuaternion &q)
 {
     tMatrix4 mat = tMatrix4::Identity();
 
-    FLOAT sqw = q.w() * q.w();
-    FLOAT sqx = q.x() * q.x();
-    FLOAT sqy = q.y() * q.y();
-    FLOAT sqz = q.z() * q.z();
-    FLOAT invs = 1 / (sqx + sqy + sqz + sqw);
+    _FLOAT sqw = q.w() * q.w();
+    _FLOAT sqx = q.x() * q.x();
+    _FLOAT sqy = q.y() * q.y();
+    _FLOAT sqz = q.z() * q.z();
+    _FLOAT invs = 1 / (sqx + sqy + sqz + sqw);
 
     mat(0, 0) = (sqx - sqy - sqz + sqw) * invs;
     mat(1, 1) = (-sqx + sqy - sqz + sqw) * invs;
     mat(2, 2) = (-sqx - sqy + sqz + sqw) * invs;
 
-    FLOAT tmp1 = q.x() * q.y();
-    FLOAT tmp2 = q.z() * q.w();
+    _FLOAT tmp1 = q.x() * q.y();
+    _FLOAT tmp2 = q.z() * q.w();
     mat(1, 0) = 2.0 * (tmp1 + tmp2) * invs;
     mat(0, 1) = 2.0 * (tmp1 - tmp2) * invs;
 
@@ -156,9 +156,9 @@ tVector4 cRotUtil::InvEuler(const tVector4 &euler,
 }
 
 void cRotUtil::RotMatToAxisAngle(const tMatrix4 &mat, tVector4 &out_axis,
-                                  FLOAT &out_theta)
+                                  _FLOAT &out_theta)
 {
-    FLOAT c = (mat(0, 0) + mat(1, 1) + mat(2, 2) - 1) * 0.5;
+    _FLOAT c = (mat(0, 0) + mat(1, 1) + mat(2, 2) - 1) * 0.5;
     c = cMathUtil::Clamp(c, -1.0, 1.0);
 
     out_theta = std::acos(c);
@@ -168,10 +168,10 @@ void cRotUtil::RotMatToAxisAngle(const tMatrix4 &mat, tVector4 &out_axis,
     }
     else
     {
-        FLOAT m21 = mat(2, 1) - mat(1, 2);
-        FLOAT m02 = mat(0, 2) - mat(2, 0);
-        FLOAT m10 = mat(1, 0) - mat(0, 1);
-        FLOAT denom = std::sqrt(m21 * m21 + m02 * m02 + m10 * m10);
+        _FLOAT m21 = mat(2, 1) - mat(1, 2);
+        _FLOAT m02 = mat(0, 2) - mat(2, 0);
+        _FLOAT m10 = mat(1, 0) - mat(0, 1);
+        _FLOAT denom = std::sqrt(m21 * m21 + m02 * m02 + m10 * m10);
         out_axis[0] = m21 / denom;
         out_axis[1] = m02 / denom;
         out_axis[2] = m10 / denom;
@@ -211,17 +211,17 @@ tVector4 cRotUtil::EulerangleToAxisAngle(const tVector4 &euler,
                                          const eRotationOrder gRotationOrder)
 {
     tVector4 axis = tVector4::Zero();
-    FLOAT angle = 0;
+    _FLOAT angle = 0;
     cRotUtil::EulerToAxisAngle(euler, axis, angle, gRotationOrder);
     return axis * angle;
 }
 tQuaternion cRotUtil::RotMatToQuaternion(const tMatrix4 &mat)
 {
-    FLOAT tr = mat(0, 0) + mat(1, 1) + mat(2, 2);
+    _FLOAT tr = mat(0, 0) + mat(1, 1) + mat(2, 2);
     tQuaternion q;
     if (tr > 0)
     {
-        FLOAT S = sqrt(tr + 1.0) * 2; // S=4*qw
+        _FLOAT S = sqrt(tr + 1.0) * 2; // S=4*qw
         q.w() = 0.25 * S;
         q.x() = (mat(2, 1) - mat(1, 2)) / S;
         q.y() = (mat(0, 2) - mat(2, 0)) / S;
@@ -229,7 +229,7 @@ tQuaternion cRotUtil::RotMatToQuaternion(const tMatrix4 &mat)
     }
     else if ((mat(0, 0) > mat(1, 1) && (mat(0, 0) > mat(2, 2))))
     {
-        FLOAT S = sqrt(1.0 + mat(0, 0) - mat(1, 1) - mat(2, 2)) * 2; // S=4*qx
+        _FLOAT S = sqrt(1.0 + mat(0, 0) - mat(1, 1) - mat(2, 2)) * 2; // S=4*qx
         q.w() = (mat(2, 1) - mat(1, 2)) / S;
         q.x() = 0.25 * S;
         q.y() = (mat(0, 1) + mat(1, 0)) / S;
@@ -237,7 +237,7 @@ tQuaternion cRotUtil::RotMatToQuaternion(const tMatrix4 &mat)
     }
     else if (mat(1, 1) > mat(2, 2))
     {
-        FLOAT S = sqrt(1.0 + mat(1, 1) - mat(0, 0) - mat(2, 2)) * 2; // S=4*qy
+        _FLOAT S = sqrt(1.0 + mat(1, 1) - mat(0, 0) - mat(2, 2)) * 2; // S=4*qy
         q.w() = (mat(0, 2) - mat(2, 0)) / S;
         q.x() = (mat(0, 1) + mat(1, 0)) / S;
         q.y() = 0.25 * S;
@@ -245,7 +245,7 @@ tQuaternion cRotUtil::RotMatToQuaternion(const tMatrix4 &mat)
     }
     else
     {
-        FLOAT S = sqrt(1.0 + mat(2, 2) - mat(0, 0) - mat(1, 1)) * 2; // S=4*qz
+        _FLOAT S = sqrt(1.0 + mat(2, 2) - mat(0, 0) - mat(1, 1)) * 2; // S=4*qz
         q.w() = (mat(1, 0) - mat(0, 1)) / S;
         q.x() = (mat(0, 2) + mat(2, 0)) / S;
         q.y() = (mat(1, 2) + mat(2, 1)) / S;
@@ -256,24 +256,24 @@ tQuaternion cRotUtil::RotMatToQuaternion(const tMatrix4 &mat)
 }
 
 void cRotUtil::EulerToAxisAngle(const tVector4 &euler, tVector4 &out_axis,
-                                 FLOAT &out_theta,
+                                 _FLOAT &out_theta,
                                  const eRotationOrder gRotationOrder)
 {
 
     if (gRotationOrder == eRotationOrder::XYZ)
     {
-        FLOAT x = euler[0];
-        FLOAT y = euler[1];
-        FLOAT z = euler[2];
+        _FLOAT x = euler[0];
+        _FLOAT y = euler[1];
+        _FLOAT z = euler[2];
 
-        FLOAT sinx = std::sin(x);
-        FLOAT cosx = std::cos(x);
-        FLOAT siny = std::sin(y);
-        FLOAT cosy = std::cos(y);
-        FLOAT sinz = std::sin(z);
-        FLOAT cosz = std::cos(z);
+        _FLOAT sinx = std::sin(x);
+        _FLOAT cosx = std::cos(x);
+        _FLOAT siny = std::sin(y);
+        _FLOAT cosy = std::cos(y);
+        _FLOAT sinz = std::sin(z);
+        _FLOAT cosz = std::cos(z);
 
-        FLOAT c =
+        _FLOAT c =
             (cosy * cosz + sinx * siny * sinz + cosx * cosz + cosx * cosy - 1) *
             0.5;
         c = cMathUtil::Clamp(c, -1.0, 1.0);
@@ -285,10 +285,10 @@ void cRotUtil::EulerToAxisAngle(const tVector4 &euler, tVector4 &out_axis,
         }
         else
         {
-            FLOAT m21 = sinx * cosy - cosx * siny * sinz + sinx * cosz;
-            FLOAT m02 = cosx * siny * cosz + sinx * sinz + siny;
-            FLOAT m10 = cosy * sinz - sinx * siny * cosz + cosx * sinz;
-            FLOAT denom = std::sqrt(m21 * m21 + m02 * m02 + m10 * m10);
+            _FLOAT m21 = sinx * cosy - cosx * siny * sinz + sinx * cosz;
+            _FLOAT m02 = cosx * siny * cosz + sinx * sinz + siny;
+            _FLOAT m10 = cosy * sinz - sinx * siny * cosz + cosx * sinz;
+            _FLOAT denom = std::sqrt(m21 * m21 + m02 * m02 + m10 * m10);
             out_axis[0] = m21 / denom;
             out_axis[1] = m02 / denom;
             out_axis[2] = m10 / denom;
@@ -304,7 +304,7 @@ void cRotUtil::EulerToAxisAngle(const tVector4 &euler, tVector4 &out_axis,
     }
 }
 
-tVector4 cRotUtil::AxisAngleToEuler(const tVector4 &axis, FLOAT theta)
+tVector4 cRotUtil::AxisAngleToEuler(const tVector4 &axis, _FLOAT theta)
 {
     tQuaternion q = AxisAngleToQuaternion(axis, theta);
     return QuaternionToEuler(q, eRotationOrder::XYZ);
@@ -313,7 +313,7 @@ tVector4 cRotUtil::AxisAngleToEuler(const tVector4 &axis, FLOAT theta)
 tMatrix4 cRotUtil::DirToRotMat(const tVector4 &dir, const tVector4 &up)
 {
     tVector4 x = up.cross3(dir);
-    FLOAT x_norm = x.norm();
+    _FLOAT x_norm = x.norm();
     if (x_norm == 0)
     {
         x_norm = 1;
@@ -332,9 +332,9 @@ tMatrix4 cRotUtil::DirToRotMat(const tVector4 &dir, const tVector4 &up)
     return mat;
 }
 
-void cRotUtil::DeltaRot(const tVector4 &axis0, FLOAT theta0,
-                         const tVector4 &axis1, FLOAT theta1, tVector4 &out_axis,
-                         FLOAT &out_theta)
+void cRotUtil::DeltaRot(const tVector4 &axis0, _FLOAT theta0,
+                         const tVector4 &axis1, _FLOAT theta1, tVector4 &out_axis,
+                         _FLOAT &out_theta)
 {
     tMatrix4 R0 = RotateMat(axis0, theta0);
     tMatrix4 R1 = RotateMat(axis1, theta1);
@@ -351,7 +351,7 @@ tQuaternion cRotUtil::EulerToQuaternion(const tVector4 &euler,
                                          const eRotationOrder order)
 {
     tVector4 axis;
-    FLOAT theta;
+    _FLOAT theta;
     EulerToAxisAngle(euler, axis, theta, order);
     return AxisAngleToQuaternion(axis, theta);
 }
@@ -367,12 +367,12 @@ tVector4 cRotUtil::QuaternionToEuler(const tQuaternion &q,
 {
     if (gRotationOrder == eRotationOrder::XYZ)
     {
-        FLOAT sinr = 2.0 * (q.w() * q.x() + q.y() * q.z());
-        FLOAT cosr = 1.0 - 2.0 * (q.x() * q.x() + q.y() * q.y());
-        FLOAT x = std::atan2(sinr, cosr);
+        _FLOAT sinr = 2.0 * (q.w() * q.x() + q.y() * q.z());
+        _FLOAT cosr = 1.0 - 2.0 * (q.x() * q.x() + q.y() * q.y());
+        _FLOAT x = std::atan2(sinr, cosr);
 
-        FLOAT sinp = 2.0 * (q.w() * q.y() - q.z() * q.x());
-        FLOAT y = 0;
+        _FLOAT sinp = 2.0 * (q.w() * q.y() - q.z() * q.x());
+        _FLOAT y = 0;
         if (fabs(sinp) >= 1) // north pole and south pole
         {
             y = copysign(M_PI / 2,
@@ -383,9 +383,9 @@ tVector4 cRotUtil::QuaternionToEuler(const tQuaternion &q,
             y = asin(sinp);
         }
 
-        FLOAT siny = 2.0 * (q.w() * q.z() + q.x() * q.y());
-        FLOAT cosy = 1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z());
-        FLOAT z = std::atan2(siny, cosy);
+        _FLOAT siny = 2.0 * (q.w() * q.z() + q.x() * q.y());
+        _FLOAT cosy = 1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z());
+        _FLOAT z = std::atan2(siny, cosy);
 
         return tVector4(x, y, z, 0);
     }
@@ -398,14 +398,14 @@ tVector4 cRotUtil::QuaternionToEuler(const tQuaternion &q,
     }
 }
 
-tQuaternion cRotUtil::AxisAngleToQuaternion(const tVector4 &axis, FLOAT theta)
+tQuaternion cRotUtil::AxisAngleToQuaternion(const tVector4 &axis, _FLOAT theta)
 {
     // axis must be normalized
     // std::cout << axis.transpose() << std::endl;
     SIM_ASSERT(std::fabs(axis.norm() - 1) < 1e-10 ||
                std::fabs(axis.norm()) < 1e-10);
-    FLOAT c = std::cos(theta / 2);
-    FLOAT s = std::sin(theta / 2);
+    _FLOAT c = std::cos(theta / 2);
+    _FLOAT s = std::sin(theta / 2);
     tQuaternion q;
     q.w() = c;
     q.x() = s * axis[0];
@@ -418,7 +418,7 @@ tQuaternion cRotUtil::AxisAngleToQuaternion(const tVector4 &axis, FLOAT theta)
 tVector4 cRotUtil::QuaternionToAxisAngle(const tQuaternion &q)
 {
     tVector4 out_axis;
-    FLOAT out_theta;
+    _FLOAT out_theta;
     QuaternionToAxisAngle(q, out_axis, out_theta);
 
     out_axis *= out_theta;
@@ -427,7 +427,7 @@ tVector4 cRotUtil::QuaternionToAxisAngle(const tQuaternion &q)
 }
 
 void cRotUtil::QuaternionToAxisAngle(const tQuaternion &q, tVector4 &out_axis,
-                                      FLOAT &out_theta)
+                                      _FLOAT &out_theta)
 {
     out_theta = 0;
     out_axis = tVector4(0, 0, 1, 0);
@@ -438,7 +438,7 @@ void cRotUtil::QuaternionToAxisAngle(const tQuaternion &q, tVector4 &out_axis,
         q1.normalize();
     }
 
-    FLOAT sin_theta = std::sqrt(1 - q1.w() * q1.w());
+    _FLOAT sin_theta = std::sqrt(1 - q1.w() * q1.w());
     if (sin_theta > 0.000001)
     {
         out_theta = 2 * std::acos(q1.w());
@@ -459,22 +459,22 @@ tMatrix4 cRotUtil::BuildQuaternionDiffMat(const tQuaternion &q)
 }
 
 tVector4 cRotUtil::CalcQuaternionVel(const tQuaternion &q0,
-                                     const tQuaternion &q1, FLOAT dt)
+                                     const tQuaternion &q1, _FLOAT dt)
 {
     tQuaternion q_diff = cRotUtil::QuatDiff(q0, q1);
     tVector4 axis;
-    FLOAT theta;
+    _FLOAT theta;
     QuaternionToAxisAngle(q_diff, axis, theta);
     return (theta / dt) * axis;
 }
 
 tVector4 cRotUtil::CalcQuaternionVelRel(const tQuaternion &q0,
-                                        const tQuaternion &q1, FLOAT dt)
+                                        const tQuaternion &q1, _FLOAT dt)
 {
     // calculate relative rotational velocity in the coordinate frame of q0
     tQuaternion q_diff = q0.conjugate() * q1;
     tVector4 axis;
-    FLOAT theta;
+    _FLOAT theta;
     QuaternionToAxisAngle(q_diff, axis, theta);
     return (theta / dt) * axis;
 }
@@ -496,16 +496,16 @@ tQuaternion cRotUtil::QuatDiff(const tQuaternion &q0, const tQuaternion &q1)
     return q1 * q0.conjugate();
 }
 
-FLOAT cRotUtil::QuatDiffTheta(const tQuaternion &q0, const tQuaternion &q1)
+_FLOAT cRotUtil::QuatDiffTheta(const tQuaternion &q0, const tQuaternion &q1)
 {
     tQuaternion dq = QuatDiff(q0, q1);
     return QuatTheta(dq);
 }
 
 // given a
-FLOAT cRotUtil::QuatTheta(const tQuaternion &dq)
+_FLOAT cRotUtil::QuatTheta(const tQuaternion &dq)
 {
-    FLOAT theta = 0;
+    _FLOAT theta = 0;
     tQuaternion q1 = dq;
     if (q1.w() > 1)
     {
@@ -513,7 +513,7 @@ FLOAT cRotUtil::QuatTheta(const tQuaternion &dq)
     }
 
     // theta = angle / 2
-    FLOAT sin_theta = std::sqrt(
+    _FLOAT sin_theta = std::sqrt(
         1 -
         q1.w() *
             q1.w()); // sin(theta) which "theta" is the rotation angle/2 in dq
@@ -531,7 +531,7 @@ FLOAT cRotUtil::QuatTheta(const tQuaternion &dq)
 // tMatrix cRotUtil::Calc_Dq1q0conj_Dq0(const tQuaternion &q0,
 //                                       const tQuaternion &q1)
 // {
-//     FLOAT a1 = q1.w(), b1 = q1.x(), c1 = q1.y(), d1 = q1.z();
+//     _FLOAT a1 = q1.w(), b1 = q1.x(), c1 = q1.y(), d1 = q1.z();
 //     tMatrix deriv = tMatrix::Zero();
 //     deriv.col(0) = tVector4(a1, b1, c1, d1);
 //     deriv.col(1) = tVector4(b1, -a1, -d1, c1);
@@ -545,7 +545,7 @@ FLOAT cRotUtil::QuatTheta(const tQuaternion &dq)
 //  */
 // tMatrix cRotUtil::Calc_DQuaternion_DAxisAngle(const tVector &aa)
 // {
-//     FLOAT theta = aa.norm();
+//     _FLOAT theta = aa.norm();
 //     tMatrix dQuaterniondAA = tMatrix::Zero();
 
 //     if (std::fabs(theta) < 1e-5)
@@ -585,11 +585,11 @@ FLOAT cRotUtil::QuatTheta(const tQuaternion &dq)
 //     tMatrixX dqdeuler = tMatrixX::Zero(4, 3);
 //     if (order == eRotationOrder ::XYZ)
 //     {
-//         FLOAT e_x = euler_angles[0], e_y = euler_angles[1],
+//         _FLOAT e_x = euler_angles[0], e_y = euler_angles[1],
 //                e_z = euler_angles[2];
-//         FLOAT cx = std::cos(e_x / 2), sx = std::sin(e_x / 2);
-//         FLOAT cy = std::cos(e_y / 2), sy = std::sin(e_y / 2);
-//         FLOAT cz = std::cos(e_z / 2), sz = std::sin(e_z / 2);
+//         _FLOAT cx = std::cos(e_x / 2), sx = std::sin(e_x / 2);
+//         _FLOAT cy = std::cos(e_y / 2), sy = std::sin(e_y / 2);
+//         _FLOAT cz = std::cos(e_z / 2), sz = std::sin(e_z / 2);
 //         dqdeuler.col(0) = 0.5 * tVector4(cx * sy * sz - cy * cz * sx,
 //                                         sx * sy * sz + cx * cy * cz,
 //                                         cx * cy * sz - cz * sx * sy,
@@ -617,7 +617,7 @@ FLOAT cRotUtil::QuatTheta(const tQuaternion &dq)
 //     tVector euler_angles = tVector::Random();
 //     tQuaternion old_qua =
 //         cRotUtil::EulerAnglesToQuaternion(euler_angles, eRotationOrder::XYZ);
-//     FLOAT eps = 1e-5;
+//     _FLOAT eps = 1e-5;
 //     tMatrixX ideal_dqde = cRotUtil::Calc_DQuaterion_DEulerAngles(
 //         euler_angles, eRotationOrder::XYZ);
 //     // std::cout << "ideal_dqde = \n" << ideal_dqde << std::endl;
@@ -652,7 +652,7 @@ FLOAT cRotUtil::QuatTheta(const tQuaternion &dq)
 //     aa[3] = 0;
 //     tQuaternion qua = cRotUtil::AxisAngleToQuaternion(aa);
 //     tMatrix dqua_daa = cRotUtil::Calc_DQuaternion_DAxisAngle(aa);
-//     FLOAT eps = 1e-5;
+//     _FLOAT eps = 1e-5;
 //     for (int i = 0; i < 3; i++)
 //     {
 //         aa[i] += eps;
@@ -681,7 +681,7 @@ FLOAT cRotUtil::QuatTheta(const tQuaternion &dq)
 //     SIM_INFO("Dq1q0conjDq0 begin test!");
 //     tQuaternion q1 = tQuaternion::UnitRandom(), q0 = tQuaternion::UnitRandom();
 //     tQuaternion old_q1_q0_conj = q1 * q0.conjugate();
-//     FLOAT eps = 1e-5;
+//     _FLOAT eps = 1e-5;
 
 //     tMatrix deriv = cRotUtil::Calc_Dq1q0conj_Dq0(q0, q1);
 //     for (int i = 0; i < 4; i++)
@@ -757,7 +757,7 @@ tVector4 cRotUtil::QuatRotVec(const tQuaternion &q, const tVector4 &dir)
 }
 
 
-tMatrix2 cRotUtil::RotMat2D(FLOAT angle)
+tMatrix2 cRotUtil::RotMat2D(_FLOAT angle)
 {
     tMatrix2 rotmat = cRotUtil::EulerAngleRotmatZ(angle).block(0, 0, 2, 2);
     return rotmat;
@@ -765,12 +765,12 @@ tMatrix2 cRotUtil::RotMat2D(FLOAT angle)
 
 
 
-tMatrix4 cRotUtil::EulerAngleRotmatX(FLOAT x)
+tMatrix4 cRotUtil::EulerAngleRotmatX(_FLOAT x)
 {
     tMatrix4 m = tMatrix4::Identity();
 
-    FLOAT cosx = cos(x);
-    FLOAT sinx = sin(x);
+    _FLOAT cosx = cos(x);
+    _FLOAT sinx = sin(x);
 
     m(0, 0) = 1;
     m(1, 1) = cosx;
@@ -780,13 +780,13 @@ tMatrix4 cRotUtil::EulerAngleRotmatX(FLOAT x)
 
     return m;
 }
-tMatrix4 cRotUtil::EulerAngleRotmatY(FLOAT y)
+tMatrix4 cRotUtil::EulerAngleRotmatY(_FLOAT y)
 {
     // return AngleAxisd(y, Vector3d::UnitY()).toRotationMatrix();
     tMatrix4 m = tMatrix4::Identity();
 
-    FLOAT cosy = cos(y);
-    FLOAT siny = sin(y);
+    _FLOAT cosy = cos(y);
+    _FLOAT siny = sin(y);
 
     m(1, 1) = 1;
     m(0, 0) = cosy;
@@ -795,13 +795,13 @@ tMatrix4 cRotUtil::EulerAngleRotmatY(FLOAT y)
     m(2, 2) = cosy;
     return m;
 }
-tMatrix4 cRotUtil::EulerAngleRotmatZ(FLOAT z)
+tMatrix4 cRotUtil::EulerAngleRotmatZ(_FLOAT z)
 {
     // return AngleAxisd(z, Vector3d::UnitZ()).toRotationMatrix();
     tMatrix4 m = tMatrix4::Identity();
 
-    FLOAT cosz = cos(z);
-    FLOAT sinz = sin(z);
+    _FLOAT cosz = cos(z);
+    _FLOAT sinz = sin(z);
 
     m(2, 2) = 1;
     m(0, 0) = cosz;
@@ -811,12 +811,12 @@ tMatrix4 cRotUtil::EulerAngleRotmatZ(FLOAT z)
 
     return m;
 }
-tMatrix4 cRotUtil::EulerAngleRotmatdX(FLOAT x)
+tMatrix4 cRotUtil::EulerAngleRotmatdX(_FLOAT x)
 {
     tMatrix4 output = tMatrix4::Zero();
 
-    FLOAT cosx = cos(x);
-    FLOAT sinx = sin(x);
+    _FLOAT cosx = cos(x);
+    _FLOAT sinx = sin(x);
 
     output(1, 1) = -sinx;
     output(1, 2) = -cosx;
@@ -824,11 +824,11 @@ tMatrix4 cRotUtil::EulerAngleRotmatdX(FLOAT x)
     output(2, 2) = -sinx;
     return output;
 }
-tMatrix4 cRotUtil::EulerAngleRotmatdY(FLOAT y)
+tMatrix4 cRotUtil::EulerAngleRotmatdY(_FLOAT y)
 {
     tMatrix4 output = tMatrix4::Zero();
-    FLOAT cosy = cos(y);
-    FLOAT siny = sin(y);
+    _FLOAT cosy = cos(y);
+    _FLOAT siny = sin(y);
 
     output(0, 0) = -siny;
     output(0, 2) = cosy;
@@ -836,11 +836,11 @@ tMatrix4 cRotUtil::EulerAngleRotmatdY(FLOAT y)
     output(2, 2) = -siny;
     return output;
 }
-tMatrix4 cRotUtil::EulerAngleRotmatdZ(FLOAT z)
+tMatrix4 cRotUtil::EulerAngleRotmatdZ(_FLOAT z)
 {
     tMatrix4 output = tMatrix4::Zero();
-    FLOAT cosz = cos(z);
-    FLOAT sinz = sin(z);
+    _FLOAT cosz = cos(z);
+    _FLOAT sinz = sin(z);
 
     output(0, 0) = -sinz;
     output(0, 1) = -cosz;
@@ -867,9 +867,9 @@ tQuaternion cRotUtil::CoefToQuaternion(const tVector4 &vec)
 
 tQuaternion cRotUtil::AxisAngleToQuaternion(const tVector4 &angvel)
 {
-    FLOAT theta = angvel.norm();
-    FLOAT theta_2 = theta / 2;
-    FLOAT cos_theta_2 = std::cos(theta_2), sin_theta_2 = std::sin(theta_2);
+    _FLOAT theta = angvel.norm();
+    _FLOAT theta_2 = theta / 2;
+    _FLOAT cos_theta_2 = std::cos(theta_2), sin_theta_2 = std::sin(theta_2);
 
     tVector4 norm_angvel = angvel.normalized();
     return tQuaternion(cos_theta_2, norm_angvel[0] * sin_theta_2,
@@ -888,12 +888,12 @@ tQuaternion cRotUtil::AxisAngleToQuaternion(const tVector4 &angvel)
 //	*/
 //	tVector axis_angle = tVector::Zero();
 //
-//	FLOAT theta = 2 * std::acos(quater.w());
+//	_FLOAT theta = 2 * std::acos(quater.w());
 //
 //	if (theta < 1e-4) return tVector::Zero();
 //
 //	//std::cout << theta << " " << std::sin(theta / 2) << std::endl;
-//	FLOAT ax = quater.x() / std::sin(theta / 2),
+//	_FLOAT ax = quater.x() / std::sin(theta / 2),
 //		ay = quater.y() / std::sin(theta / 2),
 //		az = quater.z() / std::sin(theta / 2);
 //	return theta * tVector4(ax, ay, az, 0);
@@ -901,10 +901,10 @@ tQuaternion cRotUtil::AxisAngleToQuaternion(const tVector4 &angvel)
 
 // tVector cRotUtil::CalcAngularVelocity(const tQuaternion &old_rot,
 //                                        const tQuaternion &new_rot,
-//                                        FLOAT timestep)
+//                                        _FLOAT timestep)
 // {
 //     tQuaternion trans = new_rot * old_rot.conjugate();
-//     FLOAT theta = std::acos(trans.w()) * 2; // std::acos() output range [0, pi]
+//     _FLOAT theta = std::acos(trans.w()) * 2; // std::acos() output range [0, pi]
 //     if (true == std::isnan(theta))
 //         return tVector::Zero(); // theta = nan, when w = 1. Omega = 0, 0, 0
 
@@ -919,14 +919,14 @@ tQuaternion cRotUtil::AxisAngleToQuaternion(const tVector4 &angvel)
 //         return tVector::Zero();
 //     }
 //     tVector vel = tVector::Zero();
-//     FLOAT coef = theta / (sin(theta / 2) * timestep);
+//     _FLOAT coef = theta / (sin(theta / 2) * timestep);
 //     vel.segment(0, 3) = trans.coeffs().segment(0, 3) * coef;
 //     return vel;
 // }
 
 tVector4 cRotUtil::CalcAngularVelocityFromAxisAngle(const tQuaternion &old_rot,
                                                     const tQuaternion &new_rot,
-                                                    FLOAT timestep)
+                                                    _FLOAT timestep)
 {
     std::cout << "cRotUtil::CalcAngularVelocityFromAxisAngle: this func "
                  "hasn't been well-tested, call another one\n";
@@ -948,7 +948,7 @@ tVector4 cRotUtil::QuaternionToEulerAngles(const tQuaternion &q,
                                            const eRotationOrder &order)
 {
     tVector4 res = tVector4::Zero();
-    FLOAT w = q.w(), x = q.x(), y = q.y(), z = q.z();
+    _FLOAT w = q.w(), x = q.x(), y = q.y(), z = q.z();
 
     // handle the zero quaternion
     if (order == eRotationOrder::XYZ)
@@ -985,7 +985,7 @@ tQuaternion cRotUtil::EulerAnglesToQuaternion(const tVector4 &vec,
         tVector4 axis = tVector4::Zero();
         axis[i] = 1.0;
 
-        FLOAT theta_2 = vec[i] / 2.0;
+        _FLOAT theta_2 = vec[i] / 2.0;
         axis = axis * std::sin(theta_2);
         axis[3] = std::cos(theta_2);
 
@@ -1019,7 +1019,7 @@ tMatrix4 cRotUtil::EulerAnglesToRotMat(const tVector4 &euler,
     // input euler angles: the rotation theta from parent to local
     // output rot mat: a rot mat that can convert a vector FROM LOCAL FRAME TO
     // PARENT FRAME
-    FLOAT x = euler[0], y = euler[1], z = euler[2];
+    _FLOAT x = euler[0], y = euler[1], z = euler[2];
     tMatrix4 mat = tMatrix4::Identity();
     if (order == eRotationOrder::XYZ)
     {
@@ -1050,7 +1050,7 @@ tMatrix4 cRotUtil::EulerAnglesToRotMat(const tVector4 &euler,
 // tMatrix cRotUtil::EulerAnglesToRotMatDot(const tVector &euler,
 //                                           const eRotationOrder &order)
 // {
-//     FLOAT x = euler[0], y = euler[1], z = euler[2];
+//     _FLOAT x = euler[0], y = euler[1], z = euler[2];
 //     tMatrix mat = tMatrix::Identity();
 //     if (order == eRotationOrder::XYZ)
 //     {
@@ -1090,7 +1090,7 @@ tMatrix4 cRotUtil::EulerAnglesToRotMat(const tVector4 &euler,
 //     // step1: get Jw
 //     // please read P8 formula (30) in C.K Liu's tutorial "A Quick Tutorial on
 //     // Multibody Dynamics" for more details
-//     FLOAT x = cur_q[0], y = cur_q[1], z = cur_q[2];
+//     _FLOAT x = cur_q[0], y = cur_q[1], z = cur_q[2];
 //     tMatrix Rx = cRotUtil::EulerAngleRotmatX(x),
 //             Ry = cRotUtil::EulerAngleRotmatY(y),
 //             Rz = cRotUtil::EulerAngleRotmatZ(z);
@@ -1157,7 +1157,7 @@ tMatrix4 cRotUtil::EulerAnglesToRotMat(const tVector4 &euler,
 //     assert(std::abs(q.norm() - 1) < 0.000001);
 
 //     tVector q_axis = tVector4(q.x(), q.y(), q.z(), 0);
-//     FLOAT p = q_axis.dot(dir);
+//     _FLOAT p = q_axis.dot(dir);
 //     tVector twist_axis = p * dir;
 //     out_twist = tQuaternion(q.w(), twist_axis[0], twist_axis[1], twist_axis[2]);
 //     out_twist.normalize();
@@ -1176,7 +1176,7 @@ tMatrix4 cRotUtil::EulerAnglesToRotMat(const tVector4 &euler,
 //     tVector rot_dir1 = cRotUtil::QuatRotVec(q, rot_dir0);
 //     rot_dir1 -= rot_dir1.dot(dir) * dir;
 
-//     FLOAT dir1_norm = rot_dir1.norm();
+//     _FLOAT dir1_norm = rot_dir1.norm();
 //     tQuaternion p_rot = tQuaternion::Identity();
 //     if (dir1_norm > 0.0001)
 //     {
@@ -1186,31 +1186,31 @@ tMatrix4 cRotUtil::EulerAnglesToRotMat(const tVector4 &euler,
 //     return p_rot;
 // }
 
-// void cRotUtil::ButterworthFilter(FLOAT dt, FLOAT cutoff,
+// void cRotUtil::ButterworthFilter(_FLOAT dt, _FLOAT cutoff,
 //                                   tVectorXd &out_x)
 // {
-//     FLOAT sampling_rate = 1 / dt;
+//     _FLOAT sampling_rate = 1 / dt;
 //     int n = static_cast<int>(out_x.size());
 
-//     FLOAT wc = std::tan(cutoff * M_PI / sampling_rate);
-//     FLOAT k1 = std::sqrt(2) * wc;
-//     FLOAT k2 = wc * wc;
-//     FLOAT a = k2 / (1 + k1 + k2);
-//     FLOAT b = 2 * a;
-//     FLOAT c = a;
-//     FLOAT k3 = b / k2;
-//     FLOAT d = -2 * a + k3;
-//     FLOAT e = 1 - (2 * a) - k3;
+//     _FLOAT wc = std::tan(cutoff * M_PI / sampling_rate);
+//     _FLOAT k1 = std::sqrt(2) * wc;
+//     _FLOAT k2 = wc * wc;
+//     _FLOAT a = k2 / (1 + k1 + k2);
+//     _FLOAT b = 2 * a;
+//     _FLOAT c = a;
+//     _FLOAT k3 = b / k2;
+//     _FLOAT d = -2 * a + k3;
+//     _FLOAT e = 1 - (2 * a) - k3;
 
-//     FLOAT xm2 = out_x[0];
-//     FLOAT xm1 = out_x[0];
-//     FLOAT ym2 = out_x[0];
-//     FLOAT ym1 = out_x[0];
+//     _FLOAT xm2 = out_x[0];
+//     _FLOAT xm1 = out_x[0];
+//     _FLOAT ym2 = out_x[0];
+//     _FLOAT ym1 = out_x[0];
 
 //     for (int s = 0; s < n; ++s)
 //     {
-//         FLOAT x = out_x[s];
-//         FLOAT y = a * x + b * xm1 + c * xm2 + d * ym1 + e * ym2;
+//         _FLOAT x = out_x[s];
+//         _FLOAT y = a * x + b * xm1 + c * xm2 + d * ym1 + e * ym2;
 
 //         out_x[s] = y;
 //         xm2 = xm1;
@@ -1219,15 +1219,15 @@ tMatrix4 cRotUtil::EulerAnglesToRotMat(const tVector4 &euler,
 //         ym1 = y;
 //     }
 
-//     FLOAT yp2 = out_x[n - 1];
-//     FLOAT yp1 = out_x[n - 1];
-//     FLOAT zp2 = out_x[n - 1];
-//     FLOAT zp1 = out_x[n - 1];
+//     _FLOAT yp2 = out_x[n - 1];
+//     _FLOAT yp1 = out_x[n - 1];
+//     _FLOAT zp2 = out_x[n - 1];
+//     _FLOAT zp1 = out_x[n - 1];
 
 //     for (int t = n - 1; t >= 0; --t)
 //     {
-//         FLOAT y = out_x[t];
-//         FLOAT z = a * y + b * yp1 + c * yp2 + d * zp1 + e * zp2;
+//         _FLOAT y = out_x[t];
+//         _FLOAT z = a * y + b * yp1 + c * yp2 + d * zp1 + e * zp2;
 
 //         out_x[t] = z;
 //         yp2 = yp1;
@@ -1242,7 +1242,7 @@ tMatrix4 cRotUtil::RotMat(const tQuaternion &quater_)
     // https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix
 
     tMatrix4 res = tMatrix4::Zero();
-    FLOAT w = quater_.w(), x = quater_.x(), y = quater_.y(), z = quater_.z();
+    _FLOAT w = quater_.w(), x = quater_.x(), y = quater_.y(), z = quater_.z();
     res << 1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w), 0,
         2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w), 0,
         2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y), 0, 0,

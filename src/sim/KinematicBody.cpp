@@ -1,21 +1,23 @@
 #include "KinematicBody.h"
+#include "geometries/ObjUtil.h"
 #include "geometries/Primitives.h"
 #include "utils/ColorUtil.h"
 #include "utils/DefUtil.h"
 #include "utils/JsonUtil.h"
-#include "geometries/ObjUtil.h"
+#include "utils/LogUtil.h"
 #include "utils/RenderUtil.h"
 #include "utils/RotUtil.h"
+#include "utils/json/json.h"
 #include <iostream>
-std::string gBodyShapeStr[eKinematicBodyShape::NUM_OF_KINEMATIC_SHAPE] = {
-    "plane", "cube", "sphere", "capsule", "custom"};
+static std::string gBodyShapeStr[eKinematicBodyShape::NUM_OF_KINEMATIC_SHAPE] =
+    {"plane", "cube", "sphere", "capsule", "custom"};
 cKinematicBody::cKinematicBody(int id_)
     : cBaseObject(eObjectType::KINEMATICBODY_TYPE, id_)
 {
     mIsStatic = true;
     mBodyShape = eKinematicBodyShape::KINEMATIC_INVALID;
     mCustomMeshPath = "";
-    mTargetAABBDontUseDirectly = tVector4::Zero();
+    mTargetAABBDontUseDirectly = tVector3::Zero();
     mScaleDontUseDirectly.setZero();
     mPlaneEquation.setZero();
     mTargetPos.setZero();
@@ -36,20 +38,16 @@ void cKinematicBody::Init(const Json::Value &value)
     {
         mCustomMeshPath =
             cJsonUtil::ParseAsString(cKinematicBody::MESH_PATH_KEY, value);
-        cJsonUtil::ReadVectorJson(
-            cJsonUtil::ParseAsValue(cKinematicBody::TARGET_AABB_KEY, value),
-            mTargetAABBDontUseDirectly);
+        mTargetAABBDontUseDirectly =
+            cJsonUtil::ReadVectorJson(cKinematicBody::TARGET_AABB_KEY, value);
 
-        cJsonUtil::ReadVectorJson(
-            cJsonUtil::ParseAsValue(cKinematicBody::SCALE_KEY, value),
-            mScaleDontUseDirectly);
+        mScaleDontUseDirectly =
+            cJsonUtil::ReadVectorJson(cKinematicBody::SCALE_KEY, value);
 
-        cJsonUtil::ReadVectorJson(
-            cJsonUtil::ParseAsValue(cKinematicBody::TRANSLATION_KEY, value),
-            mInitPos);
-        cJsonUtil::ReadVectorJson(
-            cJsonUtil::ParseAsValue(cKinematicBody::ORIENTATION_KEY, value),
-            mInitOrientation);
+        mInitPos =
+            cJsonUtil::ReadVectorJson(cKinematicBody::TRANSLATION_KEY, value);
+        mInitOrientation =
+            cJsonUtil::ReadVectorJson(cKinematicBody::ORIENTATION_KEY, value);
 
         if (value.isMember(cKinematicBody::IS_STATIC_KEY) == true)
         {
@@ -58,14 +56,10 @@ void cKinematicBody::Init(const Json::Value &value)
             if (mIsStatic == false)
             {
                 // parse target translation, orientation
-                cJsonUtil::ReadVectorJson(
-                    cJsonUtil::ParseAsValue(
-                        cKinematicBody::TARGET_ORIENTATION_KEY, value),
-                    mTargetOrientation);
-                cJsonUtil::ReadVectorJson(
-                    cJsonUtil::ParseAsValue(
-                        cKinematicBody::TARGET_TRANSLATION_KEY, value),
-                    mTargetPos);
+                mTargetOrientation = cJsonUtil::ReadVectorJson(
+                    cKinematicBody::TARGET_ORIENTATION_KEY, value);
+                mTargetPos = cJsonUtil::ReadVectorJson(
+                    cKinematicBody::TARGET_TRANSLATION_KEY, value);
                 // parse elasped time
                 mMovingElaspedTimeSec = cJsonUtil::ParseAsfloat(
                     cKinematicBody::ELASPED_TIME_SEC_KEY, value);
@@ -86,13 +80,13 @@ void cKinematicBody::Init(const Json::Value &value)
         BuildCustomKinematicBody();
         UpdateCurWorldTransformByTime();
         SetMeshPos();
+        mEnableTextureUV = true;
         break;
     }
     case eKinematicBodyShape::KINEMATIC_PLANE:
     {
-        cJsonUtil::ReadVectorJson(
-            cJsonUtil::ParseAsValue(cKinematicBody::PLANE_EQUATION_KEY, value),
-            mPlaneEquation);
+        mPlaneEquation = cJsonUtil::ReadVectorJson(
+            cKinematicBody::PLANE_EQUATION_KEY, value);
         // std::cout << "plane equation = " << mPlaneEquation.transpose() <<
         // std::endl;
         mPlaneScale =
@@ -109,7 +103,7 @@ void cKinematicBody::Init(const Json::Value &value)
     {
         e->mColor = ColorBlack;
     }
-    tVector4 min, max;
+    tVector3 min, max;
     CalcAABB(min, max);
     CalcTriangleInitArea();
     UpdateTriangleNormal();
@@ -163,16 +157,16 @@ void cKinematicBody::BuildPlane()
 void cKinematicBody::BuildCustomKinematicBody()
 {
     // std::cout << "mesh path = " << mCustomMeshPath << std::endl;
-    cObjUtil::LoadObj(mCustomMeshPath, mVertexArray, mEdgeArray, mTriangleArray);
-
+    cObjUtil::LoadObj(mCustomMeshPath, mVertexArray, mEdgeArray, mTriangleArray,
+                      mMatInfoArray);
     // tMatrix trans = GetWorldTransform();
-    tVector4 scale_vec = GetScaleVec();
+    tVector3 scale_vec = GetScaleVec();
     mScaledMeshVertices.noalias() = tVectorX::Zero(mVertexArray.size() * 3);
     for (int i = 0; i < mVertexArray.size(); i++)
     {
         auto &x = mVertexArray[i];
         mScaledMeshVertices.segment(3 * i, 3) =
-            (scale_vec.cwiseProduct(x->mPos)).segment(0, 3);
+            scale_vec.cwiseProduct(x->mPos.segment(0, 3));
         x->mColor = ColorAn;
     }
     for (auto &tri : mTriangleArray)
@@ -210,13 +204,14 @@ void cKinematicBody::SetMeshPos()
  *          this matrix can convert local pos to world pos in homogeneous coords
  *          world_pos = T * local_pos
  */
-tMatrix4 GetWorldTransform(const tVector4 &init_pos,
-                           const tVector4 &init_ori)
+static tMatrix4 GetWorldTransform(const tVector3 &init_pos,
+                                  const tVector3 &init_ori)
 {
     tMatrix4 trans = tMatrix4::Identity();
     trans.block(0, 3, 3, 1) = init_pos.segment(0, 3);
     trans.block(0, 0, 3, 3) =
-        cRotUtil::EulerAnglesToRotMat(init_ori, eRotationOrder::XYZ)
+        cRotUtil::EulerAnglesToRotMat(cMathUtil::Expand(init_ori, 0),
+                                      eRotationOrder::XYZ)
             .topLeftCorner<3, 3>();
     return trans;
 }
@@ -229,13 +224,13 @@ void cKinematicBody::UpdateCurWorldTransformByTime()
     }
     else
     {
-        FLOAT cur_time = mCurTime;
+        _FLOAT cur_time = mCurTime;
         if (cur_time > mMovingElaspedTimeSec)
             cur_time = mMovingElaspedTimeSec;
-        tVector4 cur_pos = (mMovingElaspedTimeSec - cur_time) /
+        tVector3 cur_pos = (mMovingElaspedTimeSec - cur_time) /
                                mMovingElaspedTimeSec * mInitPos +
                            cur_time / mMovingElaspedTimeSec * mTargetPos;
-        tVector4 cur_ori =
+        tVector3 cur_ori =
             (mMovingElaspedTimeSec - cur_time) / mMovingElaspedTimeSec *
                 mInitOrientation +
             cur_time / mMovingElaspedTimeSec * mTargetOrientation;
@@ -246,9 +241,9 @@ void cKinematicBody::UpdateCurWorldTransformByTime()
     }
 }
 
-tVector4 cKinematicBody::GetScaleVec() const
+tVector3 cKinematicBody::GetScaleVec() const
 {
-    FLOAT eps = 1e-6;
+    _FLOAT eps = 1e-6;
     if (mTargetAABBDontUseDirectly.norm() > eps &&
         mScaleDontUseDirectly.norm() > eps)
     {
@@ -259,12 +254,12 @@ tVector4 cKinematicBody::GetScaleVec() const
     }
 
     // use AABB
-    tVector4 scale_vec = tVector4::Ones();
+    tVector3 scale_vec = tVector3::Ones();
     if (mTargetAABBDontUseDirectly.norm() > eps)
     {
-        tVector4 aabb_min, aabb_max;
+        tVector3 aabb_min, aabb_max;
         CalcAABB(aabb_min, aabb_max);
-        tVector4 aabb = aabb_max - aabb_min;
+        tVector3 aabb = aabb_max - aabb_min;
         // std::cout << "init aabb = " << (aabb_max - aabb_min).transpose() <<
         // std::endl; exit(0);
         for (int i = 0; i < 3; i++)
@@ -287,7 +282,7 @@ tVector4 cKinematicBody::GetScaleVec() const
 /**
  * \brief           update kinectmatic body
  */
-void cKinematicBody::Update(FLOAT dt)
+void cKinematicBody::Update(_FLOAT dt)
 {
     mCurTime += dt;
     if (IsStatic() == false)
@@ -310,30 +305,28 @@ void cKinematicBody::Reset()
     this->mCurTime = 0;
 }
 
-tVector4 cKinematicBody::CalcCOM() const
+tVector3 cKinematicBody::CalcCOM() const
 {
-    tVector4 com = tVector4::Zero();
+    tVector3 com = tVector3::Zero();
     for (auto &v : this->mVertexArray)
     {
-        com += v->mPos;
+        com += v->mPos.segment(0, 3);
     }
     com /= mVertexArray.size();
     return com;
 }
-void cKinematicBody::MoveTranslation(const tVector4 &shift)
+void cKinematicBody::MoveTranslation(const tVector3 &shift)
 {
     for (auto &v : this->mVertexArray)
     {
-        v->mPos += shift;
+        v->mPos.segment(0, 3) += shift;
     }
 }
 
-void cKinematicBody::ApplyScale(FLOAT scale)
+void cKinematicBody::ApplyScale(_FLOAT scale)
 {
-    for (auto &v : mVertexArray)
-    {
-        v->mPos.segment(0, 3) = v->mPos.segment(0, 3) * scale;
-    }
+    mScaledMeshVertices *= scale;
+    SetMeshPos();
 }
 
 void cKinematicBody::ApplyUserPerturbForceOnce(tPerturb *) {}
@@ -341,5 +334,16 @@ void cKinematicBody::ApplyUserPerturbForceOnce(tPerturb *) {}
 void cKinematicBody::SetCurrentPos(const tVector3 &pos)
 {
     mCurWorldTransform.block(0, 3, 3, 1) = pos;
+    SetMeshPos();
+}
+
+tVector3 cKinematicBody::GetCurrentPos() const
+{
+    return mCurWorldTransform.block(0, 3, 3, 1);
+}
+
+void cKinematicBody::SetCurrentTransform(const tMatrix4 &transmat)
+{
+    mCurWorldTransform = transmat;
     SetMeshPos();
 }

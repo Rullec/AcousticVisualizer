@@ -11,66 +11,108 @@ layout(location = 0) out vec4 outColor;
 
 layout(binding = 1) uniform sampler2D texSampler;
 
-bool JudgeIsNan(float val)
+// layout(push_constant) uniform constants { int enable_texture; }
+// PushConstants;
+layout(push_constant) uniform constants
 {
-  return ( val < 0.0 || 0.0 < val || val == 0.0 ) ? false : true;
+    vec4 Ka, Kd, Ks;
+    float Ns;
+    int enable_texture;
+    int enable_phongmodel;
+    int enable_basic_color;
 }
+PushConstants;
 
-float calc_specular(vec3 light_pos, vec3 pixel_world_pos, vec3 normal, vec3 eye_pos)
+float calc_specular(vec3 light_pos, vec3 pixel_world_pos, vec3 normal,
+                    vec3 eye_pos)
 {
     // input light L
     vec3 L = normalize(light_pos - pixel_world_pos);
     // output light R
-    vec3 R = normalize( 2 * (dot(normal, L)) * normal - L);
-    vec3 V = normalize( eye_pos - pixel_world_pos);
-    return pow( abs( dot(V, R)), 512);
+    vec3 R = normalize(2 * (dot(normal, L)) * normal - L);
+    vec3 V = normalize(eye_pos - pixel_world_pos);
+    return pow(abs(dot(V, R)), 512);
 }
-void main() {
+
+vec3 calc_phong(vec3 Ka, vec3 Kd, vec3 Ks, vec3 light_pos)
+{
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * Ka;
+
+    // diffuse
+    vec3 norm = normalize(fragNormal);
+    vec3 lightDir = normalize(light_pos - fragVertexWorldPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * Kd;
+
+    // specular
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(fragCameraPos - fragVertexWorldPos);
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
+    vec3 specular = specularStrength * spec * Ks;
+
+    vec3 tmp_sum = ambient + diffuse + specular;
+    return tmp_sum;
+}
+
+void main()
+{
     vec3 light_pos = vec3(10.0, 10.0, 10.0);
-    vec3 light_color = vec3(1.0, 1.0, 1.0) * 0.5;
-    float diffuse_weight = 0.8,
-        specular_weight = calc_specular(light_pos, fragVertexWorldPos, fragNormal, fragCameraPos);
+    vec3 light_color = vec3(1.0, 1.0, 1.0);
 
-    // float sum = diffuse_weight + specular_weight;
-    // diffuse_weight /= sum;
-    // specular_weight /= sum;
-    if(isnan(fragTexCoord.x) == true || isnan( fragTexCoord.y) == true )
+    int enable_texture = PushConstants.enable_texture;
+    int enable_phong = PushConstants.enable_phongmodel;
+    int enable_basic_color = PushConstants.enable_basic_color;
+    if (enable_texture != 0)
     {
-        // outColor = vec4(fragColor, 1.0);
-        // outColor = vec4(abs(fragNormal), 1.0);
-        // outColor = vec4(0.5, 0.5, 1.0, 1.0);
-        /*
-        phong model:
-        I = ka * Ia + kd * Id * (N dot L) + ks * Is * (N dot H)^n
-        */
-        // normal is nan, only pure color
-        if(isnan(fragNormal.x) == true )
+        // enable texture
+        vec3 tmp_sum;
+        if (enable_phong != 0)
         {
-            outColor = fragColor;
+            tmp_sum =
+                calc_phong(light_color, light_color, light_color, light_pos);
         }
-        else {
-            outColor = vec4(specular_weight * light_color + diffuse_weight * vec3(fragColor.x, fragColor.y, fragColor.z), 1.0);
+        else
+        {
+            tmp_sum = vec3(1, 1, 1);
         }
 
-        
+        vec4 tex_color4 = texture(texSampler, fragTexCoord);
+        outColor.xyz = tmp_sum * tex_color4.xyz;
     }
     else
     {
-        outColor = texture(texSampler, fragTexCoord) + vec4(light_color * specular_weight, 1.0);
-
-        // add blur for remote textures
-        float length = length(fragCameraPos - fragVertexWorldPos);
-        float begin_blur_dist = 20;
-        if(length > begin_blur_dist)
-        {   
-            outColor += 0.1 * vec4(1, 1, 1 ,1)* log(length - begin_blur_dist + 1);
+        // 1. basic color + light phong
+        // 3. basic color
+        vec3 tmp_sum = vec3(1, 1, 1);
+        if (enable_basic_color == 1)
+        {
+            if (enable_phong == 1)
+            {
+                tmp_sum = calc_phong(light_color, light_color, light_color,
+                                     light_pos);
+            }
+            outColor.xyz = fragColor.xyz;
         }
-        
+        else
+        {
+            // do not use basic color
+            //  = fragNormal;
+
+            if (enable_phong == 1)
+            {
+                outColor.xyz =
+                    calc_phong(PushConstants.Ka.xyz, PushConstants.Kd.xyz,
+                               PushConstants.Ks.xyz, light_pos);
+            }
+            else
+            {
+                // outColor.xyz = vec3(0.32, 0.269804, 0.254118);
+                outColor.xyz = PushConstants.Kd.xyz;
+            }
+        }
     }
-    // outColor[0] = fragColor[3];
-    // outColor[1] = fragColor[3];
-    // outColor[2] = fragColor[3];
-    // outColor[3] = fragColor[3];
+
     outColor[3] = fragColor[3];
-    // outColor[3] = 0.5;
 }

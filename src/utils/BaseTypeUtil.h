@@ -1,1 +1,1 @@
-using FLOAT = double;
+using _FLOAT = double;

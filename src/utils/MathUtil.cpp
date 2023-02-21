@@ -1,5 +1,6 @@
 #include "MathUtil.h"
 #include "LogUtil.h"
+#include "utils/DefUtil.h"
 #include <iostream>
 #include <time.h>
 // const enum eRotationOrder gRotationOrder = eRotationOrder::XYZ;
@@ -28,22 +29,22 @@ int cMathUtil::Clamp(int val, int min, int max)
 //     out_vec = out_vec.cwiseMin(max).cwiseMax(min);
 // }
 
-FLOAT cMathUtil::Clamp(FLOAT val, FLOAT min, FLOAT max)
+_FLOAT cMathUtil::Clamp(_FLOAT val, _FLOAT min, _FLOAT max)
 {
     return SIM_MAX(min, SIM_MIN(val, max));
 }
 
-FLOAT cMathUtil::Saturate(FLOAT val) { return Clamp(val, 0.0, 1.0); }
+_FLOAT cMathUtil::Saturate(_FLOAT val) { return Clamp(val, 0.0, 1.0); }
 
-FLOAT cMathUtil::Lerp(FLOAT t, FLOAT val0, FLOAT val1)
+_FLOAT cMathUtil::Lerp(_FLOAT t, _FLOAT val0, _FLOAT val1)
 {
     return (1 - t) * val0 + t * val1;
 }
 
-FLOAT cMathUtil::NormalizeAngle(FLOAT theta)
+_FLOAT cMathUtil::NormalizeAngle(_FLOAT theta)
 {
     // normalizes theta to be between [-pi, pi]
-    FLOAT norm_theta = fmod(theta, 2 * M_PI);
+    _FLOAT norm_theta = fmod(theta, 2 * M_PI);
     if (norm_theta > M_PI)
     {
         norm_theta = -2 * M_PI + norm_theta;
@@ -55,28 +56,28 @@ FLOAT cMathUtil::NormalizeAngle(FLOAT theta)
     return norm_theta;
 }
 
-FLOAT cMathUtil::RandFloat() { return RandFloat(0, 1); }
+_FLOAT cMathUtil::RandFloat() { return RandFloat(0, 1); }
 
-FLOAT cMathUtil::RandFloat(FLOAT min, FLOAT max)
+_FLOAT cMathUtil::RandFloat(_FLOAT min, _FLOAT max)
 {
     return gRand.RandFloat(min, max);
 }
 
-FLOAT cMathUtil::RandFloatNorm(FLOAT mean, FLOAT stdev)
+_FLOAT cMathUtil::RandFloatNorm(_FLOAT mean, _FLOAT stdev)
 {
     return gRand.RandFloatNorm(mean, stdev);
 }
 
-FLOAT cMathUtil::RandFloatExp(FLOAT lambda)
+_FLOAT cMathUtil::RandFloatExp(_FLOAT lambda)
 {
     return gRand.RandFloatExp(lambda);
 }
 
-FLOAT cMathUtil::RandFloatSeed(FLOAT seed)
+_FLOAT cMathUtil::RandFloatSeed(_FLOAT seed)
 {
     unsigned int int_seed = *reinterpret_cast<unsigned int *>(&seed);
     std::default_random_engine rand_gen(int_seed);
-    std::uniform_real_distribution<FLOAT> dist;
+    std::uniform_real_distribution<_FLOAT> dist;
     return dist(rand_gen);
 }
 
@@ -104,29 +105,29 @@ void cMathUtil::SeedRand(unsigned long int seed)
 
 int cMathUtil::RandSign() { return gRand.RandSign(); }
 
-FLOAT cMathUtil::SmoothStep(FLOAT t)
+_FLOAT cMathUtil::SmoothStep(_FLOAT t)
 {
-    FLOAT val = t * t * t * (t * (t * 6 - 15) + 10);
+    _FLOAT val = t * t * t * (t * (t * 6 - 15) + 10);
     return val;
 }
 
-bool cMathUtil::FlipCoin(FLOAT p) { return gRand.FlipCoin(p); }
+bool cMathUtil::FlipCoin(_FLOAT p) { return gRand.FlipCoin(p); }
 
 
-FLOAT cMathUtil::Sign(FLOAT val) { return SignAux<FLOAT>(val); }
+_FLOAT cMathUtil::Sign(_FLOAT val) { return SignAux<_FLOAT>(val); }
 
 int cMathUtil::Sign(int val) { return SignAux<int>(val); }
 
-FLOAT cMathUtil::AddAverage(FLOAT avg0, int count0, FLOAT avg1, int count1)
+_FLOAT cMathUtil::AddAverage(_FLOAT avg0, int count0, _FLOAT avg1, int count1)
 {
-    FLOAT total = count0 + count1;
+    _FLOAT total = count0 + count1;
     return (count0 / total) * avg0 + (count1 / total) * avg1;
 }
 
 tVector4 cMathUtil::AddAverage(const tVector4 &avg0, int count0,
                               const tVector4 &avg1, int count1)
 {
-    FLOAT total = count0 + count1;
+    _FLOAT total = count0 + count1;
     return (count0 / total) * avg0 + (count1 / total) * avg1;
 }
 
@@ -134,20 +135,20 @@ tVector4 cMathUtil::AddAverage(const tVector4 &avg0, int count0,
 //                            const tVectorXd &avg1, int count1,
 //                            tVectorXd &out_result)
 // {
-//     FLOAT total = count0 + count1;
+//     _FLOAT total = count0 + count1;
 //     out_result = (count0 / total) * avg0 + (count1 / total) * avg1;
 // }
 
-// void cMathUtil::CalcSoftmax(const tVectorXd &vals, FLOAT temp,
+// void cMathUtil::CalcSoftmax(const tVectorXd &vals, _FLOAT temp,
 //                             tVectorXd &out_prob)
 // {
 //     assert(out_prob.size() == vals.size());
 //     int num_vals = static_cast<int>(vals.size());
-//     FLOAT sum = 0;
-//     FLOAT max_val = vals.maxCoeff();
+//     _FLOAT sum = 0;
+//     _FLOAT max_val = vals.maxCoeff();
 //     for (int i = 0; i < num_vals; ++i)
 //     {
-//         FLOAT val = vals[i];
+//         _FLOAT val = vals[i];
 //         val = std::exp((val - max_val) / temp);
 //         out_prob[i] = val;
 //         sum += val;
@@ -156,7 +157,7 @@ tVector4 cMathUtil::AddAverage(const tVector4 &avg0, int count0,
 //     out_prob /= sum;
 // }
 
-// FLOAT cMathUtil::EvalGaussian(const tVectorXd &mean,
+// _FLOAT cMathUtil::EvalGaussian(const tVectorXd &mean,
 //                                const tVectorXd &covar,
 //                                const tVectorXd &sample)
 // {
@@ -164,72 +165,72 @@ tVector4 cMathUtil::AddAverage(const tVector4 &avg0, int count0,
 //     assert(sample.size() == covar.size());
 
 //     tVectorXd diff = sample - mean;
-//     FLOAT exp_val = diff.dot(diff.cwiseQuotient(covar));
-//     FLOAT likelihood = std::exp(-0.5 * exp_val);
+//     _FLOAT exp_val = diff.dot(diff.cwiseQuotient(covar));
+//     _FLOAT likelihood = std::exp(-0.5 * exp_val);
 
-//     FLOAT partition = CalcGaussianPartition(covar);
+//     _FLOAT partition = CalcGaussianPartition(covar);
 //     likelihood /= partition;
 //     return likelihood;
 // }
 
-// FLOAT cMathUtil::EvalGaussian(FLOAT mean, FLOAT covar, FLOAT sample)
+// _FLOAT cMathUtil::EvalGaussian(_FLOAT mean, _FLOAT covar, _FLOAT sample)
 // {
-//     FLOAT diff = sample - mean;
-//     FLOAT exp_val = diff * diff / covar;
-//     FLOAT norm = 1 / std::sqrt(2 * M_PI * covar);
-//     FLOAT likelihood = norm * std::exp(-0.5 * exp_val);
+//     _FLOAT diff = sample - mean;
+//     _FLOAT exp_val = diff * diff / covar;
+//     _FLOAT norm = 1 / std::sqrt(2 * M_PI * covar);
+//     _FLOAT likelihood = norm * std::exp(-0.5 * exp_val);
 //     return likelihood;
 // }
 
-// FLOAT cMathUtil::CalcGaussianPartition(const tVectorXd &covar)
+// _FLOAT cMathUtil::CalcGaussianPartition(const tVectorXd &covar)
 // {
 //     int data_size = static_cast<int>(covar.size());
-//     FLOAT det = covar.prod();
-//     FLOAT partition = std::sqrt(std::pow(2 * M_PI, data_size) * det);
+//     _FLOAT det = covar.prod();
+//     _FLOAT partition = std::sqrt(std::pow(2 * M_PI, data_size) * det);
 //     return partition;
 // }
 
-// FLOAT cMathUtil::EvalGaussianLogp(const tVectorXd &mean,
+// _FLOAT cMathUtil::EvalGaussianLogp(const tVectorXd &mean,
 //                                    const tVectorXd &covar,
 //                                    const tVectorXd &sample)
 // {
 //     int data_size = static_cast<int>(covar.size());
 
 //     tVectorXd diff = sample - mean;
-//     FLOAT logp = -0.5 * diff.dot(diff.cwiseQuotient(covar));
-//     FLOAT det = covar.prod();
+//     _FLOAT logp = -0.5 * diff.dot(diff.cwiseQuotient(covar));
+//     _FLOAT det = covar.prod();
 //     logp += -0.5 * (data_size * std::log(2 * M_PI) + std::log(det));
 
 //     return logp;
 // }
 
-// FLOAT cMathUtil::EvalGaussianLogp(FLOAT mean, FLOAT covar, FLOAT sample)
+// _FLOAT cMathUtil::EvalGaussianLogp(_FLOAT mean, _FLOAT covar, _FLOAT sample)
 // {
-//     FLOAT diff = sample - mean;
-//     FLOAT logp = -0.5 * diff * diff / covar;
+//     _FLOAT diff = sample - mean;
+//     _FLOAT logp = -0.5 * diff * diff / covar;
 //     logp += -0.5 * (std::log(2 * M_PI) + std::log(covar));
 //     return logp;
 // }
 
-// FLOAT cMathUtil::Sigmoid(FLOAT x) { return Sigmoid(x, 1, 0); }
+// _FLOAT cMathUtil::Sigmoid(_FLOAT x) { return Sigmoid(x, 1, 0); }
 
-// FLOAT cMathUtil::Sigmoid(FLOAT x, FLOAT gamma, FLOAT bias)
+// _FLOAT cMathUtil::Sigmoid(_FLOAT x, _FLOAT gamma, _FLOAT bias)
 // {
-//     FLOAT exp = -gamma * (x + bias);
-//     FLOAT val = 1 / (1 + std::exp(exp));
+//     _FLOAT exp = -gamma * (x + bias);
+//     _FLOAT val = 1 / (1 + std::exp(exp));
 //     return val;
 // }
 
 // int cMathUtil::SampleDiscreteProb(const tVectorX &probs)
 // {
 //     assert(std::abs(probs.sum() - 1) < 0.00001);
-//     FLOAT rand = RandFloat();
+//     _FLOAT rand = RandFloat();
 
 //     int rand_idx = gInvalidIdx;
 //     int num_probs = static_cast<int>(probs.size());
 //     for (int i = 0; i < num_probs; ++i)
 //     {
-//         FLOAT curr_prob = probs[i];
+//         _FLOAT curr_prob = probs[i];
 //         rand -= curr_prob;
 
 //         if (rand <= 0)
@@ -244,7 +245,7 @@ tVector4 cMathUtil::AddAverage(const tVector4 &avg0, int count0,
 /**
  * \briewf          categorical random distribution
  */
-int cMathUtil::RandIntCategorical(const std::vector<FLOAT> &prop)
+int cMathUtil::RandIntCategorical(const std::vector<_FLOAT> &prop)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -260,15 +261,15 @@ tVector4 cMathUtil::CalcBarycentric(const tVector4 &p, const tVector4 &a,
     tVector4 v1 = c - a;
     tVector4 v2 = p - a;
 
-    FLOAT d00 = v0.dot(v0);
-    FLOAT d01 = v0.dot(v1);
-    FLOAT d11 = v1.dot(v1);
-    FLOAT d20 = v2.dot(v0);
-    FLOAT d21 = v2.dot(v1);
-    FLOAT denom = d00 * d11 - d01 * d01;
-    FLOAT v = (d11 * d20 - d01 * d21) / denom;
-    FLOAT w = (d00 * d21 - d01 * d20) / denom;
-    FLOAT u = 1.0f - v - w;
+    _FLOAT d00 = v0.dot(v0);
+    _FLOAT d01 = v0.dot(v1);
+    _FLOAT d11 = v1.dot(v1);
+    _FLOAT d20 = v2.dot(v0);
+    _FLOAT d21 = v2.dot(v1);
+    _FLOAT denom = d00 * d11 - d01 * d01;
+    _FLOAT v = (d11 * d20 - d01 * d21) / denom;
+    _FLOAT w = (d00 * d21 - d01 * d20) / denom;
+    _FLOAT u = 1.0f - v - w;
     return tVector4(u, v, w, 0);
 }
 
@@ -373,10 +374,10 @@ bool cMathUtil::IntersectAABBXZ(const tVector4 &aabb_min0,
     return overlap;
 }
 
-bool cMathUtil::CheckNextInterval(FLOAT delta, FLOAT curr_val,
-                                  FLOAT int_size)
+bool cMathUtil::CheckNextInterval(_FLOAT delta, _FLOAT curr_val,
+                                  _FLOAT int_size)
 {
-    FLOAT pad = 0.001 * delta;
+    _FLOAT pad = 0.001 * delta;
     int curr_count = static_cast<int>(std::floor((curr_val + pad) / int_size));
     int prev_count =
         static_cast<int>(std::floor((curr_val + pad - delta) / int_size));
@@ -404,7 +405,7 @@ tVector4 cMathUtil::SampleRandPtBias(const tVector4 &bound_min,
                                     const tVector4 &bound_max,
                                     const tVector4 &focus)
 {
-    FLOAT t = RandFloat(0, 1);
+    _FLOAT t = RandFloat(0, 1);
     tVector4 size = bound_max - bound_min;
     tVector4 new_min = focus + (t * 0.5) * size;
     tVector4 new_max = focus - (t * 0.5) * size;
@@ -420,19 +421,19 @@ tVector4 cMathUtil::SampleRandPtBias(const tVector4 &bound_min,
 //{
 //	//
 // http://www.iri.upc.edu/files/scidoc/2068-Accurate-Computation-of-Quaternions-from-Rotation-Matrices.pdf
-//	FLOAT eta = 0;
-//	FLOAT q1, q2, q3, q4;	// = [w, x, y, z]
+//	_FLOAT eta = 0;
+//	_FLOAT q1, q2, q3, q4;	// = [w, x, y, z]
 //
 //	// determine q1
 //	{
-//		FLOAT detect_value = mat(0, 0) + mat(1, 1) + mat(2, 2);
+//		_FLOAT detect_value = mat(0, 0) + mat(1, 1) + mat(2, 2);
 //		if (detect_value > eta)
 //		{
 //			q1 = 0.5 * std::sqrt(1 + detect_value);
 //		}
 //		else
 //		{
-//			FLOAT numerator = 0;
+//			_FLOAT numerator = 0;
 //			numerator += std::pow(mat(2, 1) - mat(1, 2), 2);
 //			numerator += std::pow(mat(0, 2) - mat(2, 0), 2);
 //			numerator += std::pow(mat(1, 0) - mat(0, 1), 2);
@@ -442,14 +443,14 @@ tVector4 cMathUtil::SampleRandPtBias(const tVector4 &bound_min,
 //
 //	// determine q2
 //	{
-//		FLOAT detect_value = mat(0, 0) - mat(1, 1) - mat(2, 2);
+//		_FLOAT detect_value = mat(0, 0) - mat(1, 1) - mat(2, 2);
 //		if (detect_value > eta)
 //		{
 //			q2 = 0.5 * std::sqrt(1 + detect_value);
 //		}
 //		else
 //		{
-//			FLOAT numerator = 0;
+//			_FLOAT numerator = 0;
 //			numerator += std::pow(mat(2, 1) - mat(1, 2), 2);
 //			numerator += std::pow(mat(0, 1) + mat(1, 0), 2);
 //			numerator += std::pow(mat(2, 0) + mat(0, 2), 2);
@@ -459,14 +460,14 @@ tVector4 cMathUtil::SampleRandPtBias(const tVector4 &bound_min,
 //
 //	// determine q3
 //	{
-//		FLOAT detect_value = -mat(0, 0) + mat(1, 1) - mat(2, 2);
+//		_FLOAT detect_value = -mat(0, 0) + mat(1, 1) - mat(2, 2);
 //		if (detect_value > eta)
 //		{
 //			q3 = 0.5 * std::sqrt(1 + detect_value);
 //		}
 //		else
 //		{
-//			FLOAT numerator = 0;
+//			_FLOAT numerator = 0;
 //			numerator += std::pow(mat(0, 2) - mat(2, 0), 2);
 //			numerator += std::pow(mat(0, 1) + mat(1, 0), 2);
 //			numerator += std::pow(mat(1, 2) + mat(2, 1), 2);
@@ -476,14 +477,14 @@ tVector4 cMathUtil::SampleRandPtBias(const tVector4 &bound_min,
 //
 //	// determine q4
 //	{
-//		FLOAT detect_value = -mat(0, 0) - mat(1, 1) + mat(2, 2);
+//		_FLOAT detect_value = -mat(0, 0) - mat(1, 1) + mat(2, 2);
 //		if (detect_value > eta)
 //		{
 //			q4 = 0.5 * std::sqrt(1 + detect_value);
 //		}
 //		else
 //		{
-//			FLOAT numerator = 0;
+//			_FLOAT numerator = 0;
 //			numerator += std::pow(mat(1, 0) - mat(0, 1), 2);
 //			numerator += std::pow(mat(2, 0) + mat(0, 2), 2);
 //			numerator += std::pow(mat(2, 1) + mat(1, 2), 2);

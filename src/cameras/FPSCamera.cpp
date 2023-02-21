@@ -3,6 +3,7 @@
 //
 
 #include "FPSCamera.h"
+#include "utils/MathUtil.h"
 #define angle2rad(deg_value) ((deg_value)*gDegreesToRadians)
 #define rad2angle(rad_value) ((rad_value)*gRadiansToDegrees)
 
@@ -13,14 +14,14 @@
 // }
 FPSCamera::~FPSCamera() {}
 FPSCamera::FPSCamera(const tVector3 &pos, const tVector3 &center,
-                     const tVector3 &up, FLOAT fov, FLOAT near_plane,
-                     FLOAT far_plane)
+                     const tVector3 &up, _FLOAT fov, _FLOAT near_plane,
+                     _FLOAT far_plane)
     : CameraBase(pos, center, up, fov, near_plane, far_plane)
 {
     mType = eCameraType::FPS_CAMERA;
 
     pitch = rad2angle(asin(mCamFront(1)));
-    FLOAT val = asin(mCamFront(0) / cos(angle2rad(pitch)));
+    _FLOAT val = asin(mCamFront(0) / cos(angle2rad(pitch)));
     if (val < -1)
         val = -1;
     else if (val > 1)
@@ -70,7 +71,7 @@ void FPSCamera::MoveDown()
     mCamCenter = mCamPos + mCamFront;
 }
 
-void FPSCamera::MouseMove(FLOAT mouse_x, FLOAT mouse_y)
+void FPSCamera::MouseMove(_FLOAT mouse_x, _FLOAT mouse_y)
 {
     if (first_mouse)
     {
@@ -83,8 +84,8 @@ void FPSCamera::MouseMove(FLOAT mouse_x, FLOAT mouse_y)
     }
     // std::cout << "fps move mouse, now mouse = " << mouse_x << " " << mouse_y
     //           << std::endl;
-    FLOAT x_offset = mouse_x - last_x;
-    FLOAT y_offset = -mouse_y + last_y;
+    _FLOAT x_offset = mouse_x - last_x;
+    _FLOAT y_offset = -mouse_y + last_y;
     // std::cout << "x offset = " << x_offset << " y offset = " << y_offset
     //           << std::endl;
     // // std::cout << "raw yaw = " << yaw << std::endl;

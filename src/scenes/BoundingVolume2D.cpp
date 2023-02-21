@@ -52,8 +52,8 @@ void cBoundVolume2D::InitVolume()
     const int Gap = 5;
     // 1. create grid
     mGridArray.clear();
-    FLOAT x_gap = (mAABBMax - mAABBMin)[0] / (Gap - 1);
-    FLOAT y_gap = (mAABBMax - mAABBMin)[1] / (Gap - 1);
+    _FLOAT x_gap = (mAABBMax - mAABBMin)[0] / (Gap - 1);
+    _FLOAT y_gap = (mAABBMax - mAABBMin)[1] / (Gap - 1);
     for (int x_id = 0; x_id < Gap; x_id++)
     {
         for (int y_id = 0; y_id < Gap; y_id++)
@@ -119,12 +119,12 @@ int cBoundVolume2D::FindIncludedTriangle(const tVector2 &pos, tVector3 &bary)
 int cBoundVolume2D::FindNearestTriangle(const tVector2 &pos, tVector3 &bary)
 {
     // 1. find the nearest grid
-    FLOAT min_dist = 1e9;
+    _FLOAT min_dist = 1e9;
     int grid_id = -1;
     for (int i = 0; i < mGridArray.size(); i++)
     {
         auto grid = this->mGridArray[i];
-        FLOAT cur_dist = grid->CalcDistanceFromPosToSquareGrid(pos);
+        _FLOAT cur_dist = grid->CalcDistanceFromPosToSquareGrid(pos);
         if (cur_dist < min_dist)
         {
             min_dist = cur_dist;
@@ -152,7 +152,7 @@ int cBoundVolume2D::FindNearestTriangleAll(const tVector2 &pos,
     // }
 }
 
-FLOAT sign(const tVector2 &p1, const tVector2 &p2, const tVector2 &p3)
+_FLOAT sign(const tVector2 &p1, const tVector2 &p2, const tVector2 &p3)
 {
     return (p1.x() - p3.x()) * (p2.y() - p3.y()) -
            (p2.x() - p3.x()) * (p1.y() - p3.y());
@@ -161,7 +161,7 @@ FLOAT sign(const tVector2 &p1, const tVector2 &p2, const tVector2 &p3)
 bool PointInTriangle(const tVector2 &pt, const tVector2 &v1,
                      const tVector2 &v2, const tVector2 &v3)
 {
-    FLOAT d1, d2, d3;
+    _FLOAT d1, d2, d3;
     bool has_neg, has_pos;
 
     d1 = sign(pt, v1, v2);
@@ -198,9 +198,9 @@ int tGrid::FindInsideTriangle(const tVector2 &cur_pos, tVector3 &bary)
     return -1;
 }
 
-FLOAT CalcPointTriangleDist(const tVector2 &cur_pos, tTriangle2DPtr cur_tri)
+_FLOAT CalcPointTriangleDist(const tVector2 &cur_pos, tTriangle2DPtr cur_tri)
 {
-    FLOAT tri_dist = 1e9;
+    _FLOAT tri_dist = 1e9;
     for (int i = 0; i < 3; i++)
     {
         tVector2 tri_st = (i == 0)
@@ -211,20 +211,20 @@ FLOAT CalcPointTriangleDist(const tVector2 &cur_pos, tTriangle2DPtr cur_tri)
                                : ((i == 1) ? cur_tri->pos2 : (cur_tri->pos0));
         tVector2 v1 = tri_ed - tri_st;
         tVector2 v2 = cur_pos - tri_st;
-        FLOAT cos = v1.dot(v2) / (v1.norm() * v2.norm());
+        _FLOAT cos = v1.dot(v2) / (v1.norm() * v2.norm());
         if (v1.dot(v2) < 0)
         {
-            FLOAT cur_dist = v2.norm();
+            _FLOAT cur_dist = v2.norm();
             tri_dist = SIM_MIN(tri_dist, cur_dist);
         }
         else if (v2.norm() * cos > v1.norm())
         {
-            FLOAT cur_dist = (cur_pos - tri_ed).norm();
+            _FLOAT cur_dist = (cur_pos - tri_ed).norm();
             tri_dist = SIM_MIN(tri_dist, cur_dist);
         }
         else
         {
-            FLOAT edge_dist =
+            _FLOAT edge_dist =
                 (v2 - (v1.normalized().dot(v2)) * v1.normalized()).norm();
             tri_dist = SIM_MIN(tri_dist, edge_dist);
         }
@@ -239,13 +239,13 @@ int tGrid::FindNearestTriangleWhenOutside(const tVector2 &cur_pos,
                                           tVector3 &bary) const
 {
     // 1. find the min tri id
-    FLOAT min_tri_dist = 1e9;
+    _FLOAT min_tri_dist = 1e9;
     int min_tri_id = -1;
     for (int tri_id = 0; tri_id < this->mTrianglesArray.size(); tri_id++)
     {
         auto cur_tri = mTrianglesArray[tri_id];
 
-        FLOAT tri_dist = CalcPointTriangleDist(cur_pos, cur_tri);
+        _FLOAT tri_dist = CalcPointTriangleDist(cur_pos, cur_tri);
         if (tri_dist < min_tri_dist)
         {
             min_tri_dist = tri_dist;
@@ -278,14 +278,14 @@ int tGrid::FindNearestTriangleWhenOutside(const tVector2 &cur_pos,
  * \brief           calculate the external distance between the pos to the grid
  *      if the pos is inside the grid, return 0
  */
-FLOAT tGrid::CalcDistanceFromPosToSquareGrid(const tVector2 &pos) const
+_FLOAT tGrid::CalcDistanceFromPosToSquareGrid(const tVector2 &pos) const
 {
     if (IsInsideAABB(pos) == true)
         return 0;
     else
     {
         //  x_start
-        FLOAT min_dist = ((mAABBEd + mAABBSt) / 2 - pos).norm();
+        _FLOAT min_dist = ((mAABBEd + mAABBSt) / 2 - pos).norm();
         return min_dist;
     }
 }

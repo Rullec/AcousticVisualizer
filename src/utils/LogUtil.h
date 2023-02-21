@@ -17,8 +17,7 @@ public:
                        va_list args);
 
     // const static tLogger mGlobalLogger;
-    inline const static tLogger mGlobalLogger =
-        cLogUtil::CreateLogger("Global");
+    static tLogger mGlobalLogger;
 
 private:
     inline const static size_t buf_size = 1000;

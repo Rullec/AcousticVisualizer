@@ -7,18 +7,18 @@ struct tAcousticMaterialProp
     tVector3 GetVector() const;
     void SetVector(const tVector3 &) const;
 
-    FLOAT mRho, mA, mB;
+    _FLOAT mRho, mA, mB;
 };
 
 struct tClickInfo
 {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     std::vector<int> mTriIds;
-    std::vector<FLOAT> mAmp;
+    std::vector<_FLOAT> mAmp;
     tEigenArr<tVector3> mNormal;
 
-    FLOAT mTS;
-    FLOAT mAudioAmp;
+    _FLOAT mTS;
+    _FLOAT mAudioAmp;
     tClickInfo();
 };
 class ModalModel;
@@ -34,8 +34,9 @@ public:
     virtual ~cAcousticBody();
     virtual void Init(const Json::Value &conf) override;
     virtual void ApplyUserPerturbForceOnce(tPerturb *) override;
-    virtual void Update(FLOAT dt) override;
+    virtual void Update(_FLOAT dt) override;
     virtual void UpdateImGui() override;
+    virtual void Shift(const tVector3 &pos);
 
 protected:
     std::string mIniPath, mSurfaceObjPath, mMomentsPath, mEigenPath, mVmapPath;

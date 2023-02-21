@@ -1,6 +1,7 @@
 #include "AudioWave.h"
 #include "utils/JsonUtil.h"
 #include "utils/LogUtil.h"
+#include "utils/json/json.h"
 tDiscretedWave::tDiscretedWave(float dt_)
 {
     dt = dt_;

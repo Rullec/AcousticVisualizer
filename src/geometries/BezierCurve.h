@@ -10,7 +10,7 @@ public:
     explicit cBezierCurve(int num_of_div, const tVector2 &A,
                           const tVector2 &B, const tVector2 &C,
                           const tVector2 &D);
-    virtual FLOAT GetTotalLength() const;
+    virtual _FLOAT GetTotalLength() const;
     virtual int GetNumOfDrawEdges() const;
     virtual const tVectorXf &GetDrawBuffer();
     tEigenArr<tVector2> GetPointList();

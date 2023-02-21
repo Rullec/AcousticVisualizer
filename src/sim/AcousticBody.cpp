@@ -1,6 +1,8 @@
 #include "AcousticBody.h"
 #include "AudioOutput.h"
 #include "INIReader.h"
+#include "cameras/CameraBase.h"
+#include "cameras/CameraBuilder.h"
 #include "geometries/ObjUtil.h"
 #include "geometries/Primitives.h"
 #include "utils/ColorUtil.h"
@@ -35,12 +37,14 @@ cAcousticBody::cAcousticBody(int id)
 cAcousticBody::~cAcousticBody() {}
 void cAcousticBody::Init(const Json::Value &conf)
 {
+    cBaseObject::Init(conf);
     // 1. get ini path
     mIniPath = cJsonUtil::ParseAsString("ini_path", conf);
     if (cFileUtil::ExistsFile(mIniPath) == false)
     {
         SIM_ERROR("ini %s doesn't exist", mIniPath.c_str());
     }
+    printf("load ini %s\n", mIniPath.c_str());
 
     // 2. load ini path
     INIReader reader(mIniPath);
@@ -79,8 +83,8 @@ void cAcousticBody::Init(const Json::Value &conf)
                        reader.GetFloat("camera", "y", -1),
                        reader.GetFloat("camera", "z", -1));
 
-    cObjUtil::LoadObj(mSurfaceObjPath, mVertexArray, mEdgeArray,
-                      mTriangleArray);
+    cObjUtil::LoadObj(mSurfaceObjPath, mVertexArray, mEdgeArray, mTriangleArray,
+                      mMatInfoArray);
     mTrianglesCOM.resize(mTriangleArray.size());
     for (int i = 0; i < GetNumOfTriangles(); i++)
     {
@@ -111,9 +115,8 @@ void cAcousticBody::Init(const Json::Value &conf)
 
     AudioSynthesis();
 }
-#include "cameras/CameraBase.h"
 #include "cameras/CameraFactory.h"
-void cAcousticBody::Update(FLOAT dt)
+void cAcousticBody::Update(_FLOAT dt)
 {
     mCamPos = cCameraFactory::getInstance()->GetCameraPos();
 }
@@ -220,7 +223,7 @@ void cAcousticBody::AudioSynthesis()
     std::thread ts[NUM_THREADS];
     printf("[warn] sel TRI id here!\n");
     std::vector<int> selTriIds = mClickInfo.mTriIds;
-    std::vector<FLOAT> Amps = mClickInfo.mAmp;
+    std::vector<_FLOAT> Amps = mClickInfo.mAmp;
 
     SIM_ASSERT(selTriIds.size() == Amps.size());
     memset(whole_soundBuffer.data(), 0,
@@ -578,7 +581,7 @@ void cAcousticBody::ApplyUserPerturbForceOnce(tPerturb *pert)
     {
 
         int center_tid = pert->mAffectedTriId;
-        std::vector<FLOAT> dist(GetNumOfTriangles(), 0);
+        std::vector<_FLOAT> dist(GetNumOfTriangles(), 0);
         for (int i = 0; i < GetNumOfTriangles(); i++)
             dist[i] = (mTrianglesCOM[center_tid] - mTrianglesCOM[i]).norm();
         // std::cout << "click pos = " << mTrianglesCOM[center_tid].transpose()
@@ -682,5 +685,13 @@ void cAcousticBody::ApplyUserPerturbForceOnce(tPerturb *pert)
 
         // auto output = cAudioOutput::getInstance();
         // output->SetWave(wave);
+    }
+}
+
+void cAcousticBody::Shift(const tVector3 &pos)
+{
+    for (auto &v : mVertexArray)
+    {
+        v->mPos.segment(0, 3) += pos;
     }
 }

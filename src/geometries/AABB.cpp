@@ -53,7 +53,7 @@ void tAABB::Expand(const tAABB &new_AABB)
 int tAABB::GetMaxExtent() const
 {
     tVector4 extent = mMax - mMin;
-    FLOAT max_extent = extent[0];
+    _FLOAT max_extent = extent[0];
     int max_extent_id = 0;
     for (int i = 1; i < 3; i++)
     {

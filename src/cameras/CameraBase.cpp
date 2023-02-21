@@ -23,10 +23,13 @@ tMatrix4 CameraBase::ViewMatrix()
     return Eigen::lookAt(mCamPos, mCamCenter, mCamUp);
 }
 CameraBase::CameraBase(const tVector3 &pos, const tVector3 &center,
-                       const tVector3 &up, FLOAT fov, FLOAT near_plane,
-                       FLOAT far_plane)
+                       const tVector3 &up, _FLOAT fov, _FLOAT near_plane,
+                       _FLOAT far_plane)
     : mouse_acc(0.1f), key_acc(0.02f), last_x(0), last_y(0), first_mouse(true)
 {
+#ifdef __APPLE__
+    key_acc *= 0.1;
+#endif
     mCamPos = pos;
     mCamCenter = center;
     mCamUp = up.normalized();
@@ -38,14 +41,14 @@ CameraBase::CameraBase(const tVector3 &pos, const tVector3 &center,
 CameraBase::~CameraBase() {}
 eCameraType CameraBase::GetType() const { return mType; }
 
-void CameraBase::SetKeyAcc(FLOAT acc) { key_acc = static_cast<float>(acc); }
+void CameraBase::SetKeyAcc(_FLOAT acc) { key_acc = static_cast<float>(acc); }
 
-void CameraBase::SetMouseAcc(FLOAT acc)
+void CameraBase::SetMouseAcc(_FLOAT acc)
 {
     mouse_acc = static_cast<float>(acc);
 }
 
-void CameraBase::SetXY(FLOAT mouse_x, FLOAT mouse_y)
+void CameraBase::SetXY(_FLOAT mouse_x, _FLOAT mouse_y)
 {
     last_x = mouse_x;
     last_y = mouse_y;
@@ -67,13 +70,13 @@ void CameraBase::ResetFlag() { first_mouse = true; }
  *  OPENGL convention. in vulkan environment, the (1,1) *= -1 for Y axis
  * opposition
  */
-tMatrix4 CameraBase::ProjMatrix(FLOAT screen_width, FLOAT screen_height,
-                                 bool is_vulkan /*= false*/) const
+tMatrix4 CameraBase::ProjMatrix(_FLOAT screen_width, _FLOAT screen_height,
+                                bool is_vulkan /*= false*/) const
 
 {
-    FLOAT fov_rad = (mFovDeg / 180) * M_PI;
-    FLOAT gamma = screen_width / screen_height;
-    FLOAT tan_theta_2 = std::tan(fov_rad / 2);
+    _FLOAT fov_rad = (mFovDeg / 180) * M_PI;
+    _FLOAT gamma = screen_width / screen_height;
+    _FLOAT tan_theta_2 = std::tan(fov_rad / 2);
     // std::cout << "fov_rad = " << fov_rad << std::endl;
     // std::cout << "tan theta / 2 = " << tan_theta_2 << std::endl;
     tMatrix4 view_mat = tMatrix4::Zero();
@@ -93,7 +96,7 @@ tVector3 CameraBase::GetCameraPos() const { return mCamPos; }
 
 tVector3 CameraBase::GetCameraCenter() const { return this->mCamCenter; }
 tVector3 CameraBase::GetCameraUp() const { return this->mCamUp; }
-FLOAT CameraBase::GetCameraFovDeg() const
+_FLOAT CameraBase::GetCameraFovDeg() const
 {
     // for orthogonal cam, the fov can be zero; add this assert in order to
     // debug
@@ -105,16 +108,16 @@ bool CameraBase::IsFirstMouse() const { return this->first_mouse; }
 /**
  * \brief           inverse persepctive projection
  */
-tVector4 CameraBase::CalcCursorPointWorldPos(FLOAT xpos, FLOAT ypos,
-                                            int height, int width)
+tVector4 CameraBase::CalcCursorPointWorldPos(_FLOAT xpos, _FLOAT ypos,
+                                             int height, int width)
 {
     tMatrix4 view_mat_inv = this->ViewMatrix().inverse();
     tMatrix4 mat;
 #ifdef __APPLE__
     xpos *= 2, ypos *= 2;
 #endif
-    FLOAT fov_rad = this->mFovDeg / 180 * M_PI;
-    FLOAT tan_theta_2 = std::tan(fov_rad / 2);
+    _FLOAT fov_rad = this->mFovDeg / 180 * M_PI;
+    _FLOAT tan_theta_2 = std::tan(fov_rad / 2);
     tVector4 test = tVector4(xpos, ypos, 1, 1);
     tMatrix4 mat1 = tMatrix4::Identity();
     mat1(0, 0) = 1.0 / width;
@@ -143,15 +146,14 @@ tVector3 CameraBase::GetCameraFront() const { return this->mCamFront; }
 /**
  * \brief
  */
-void CameraBase::RotateAlongYAxis(FLOAT angle_deg)
+void CameraBase::RotateAlongYAxis(_FLOAT angle_deg)
 {
     // keep the center
     tVector3 pos_to_center = this->mCamCenter - this->mCamPos;
     tVector3 new_pos_to_center =
         cRotUtil::AxisAngleToRotmat(tVector4(0, 1, 0, 0) * angle_deg *
-                                     gDegreesToRadians)
-            .block(0, 0, 3, 3)
-             *
+                                    gDegreesToRadians)
+            .block(0, 0, 3, 3) *
         pos_to_center;
 
     // change the pos
@@ -159,6 +161,14 @@ void CameraBase::RotateAlongYAxis(FLOAT angle_deg)
     // change the front vector
     mCamFront = (mCamCenter - mCamPos).normalized();
 }
-void CameraBase::MiddleKeyMove(FLOAT mouse_x, FLOAT mouse_y) {
+void CameraBase::MiddleKeyMove(_FLOAT mouse_x, _FLOAT mouse_y) {}
+#include "utils/StringUtil.h"
+std::string CameraBase::GetDescString()
+{
 
+    return cStringUtil::string_format(
+        "pos(cm) %.1f %.1f %.1f\n focus %.1f %.1f %.1f\nup %.2f %.2f %.2f",
+        mCamPos[0] * 100, mCamPos[1] * 100, mCamPos[2] * 100,
+        mCamCenter[0] * 100, mCamCenter[1] * 100, mCamCenter[2] * 100,
+        mCamUp[0], mCamUp[1], mCamUp[2]);
 }

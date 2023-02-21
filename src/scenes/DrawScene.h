@@ -1,7 +1,6 @@
 #pragma once
 #include "Scene.h"
 #include "utils/DefUtil.h"
-#include "utils/MathUtil.h"
 #include "utils/RenderUtil.h"
 #include <optional>
 #include <vector>
@@ -19,11 +18,22 @@
 #define SIM_VK_VERTEX_TEX_OFFSET_BYTE                                          \
     (SIM_VK_VERTEX_NORMAL_OFFSET_BYTE +                                        \
      sizeof(float) * SIM_VK_VERTEX_NORMAL_SIZE)
+#include "glm/glm.hpp"
+struct tMaterialPushConstant
+{
+    tMaterialPushConstant();
+    glm::vec4 Ka, Kd, Ks;
+    float Ns;
+    int32_t enable_texture;
+    int32_t enable_phongmodel;
+    int32_t enable_basic_color;
+
+};
 
 // #define SIM_VK_VERTEX_BUFFER_SIZE (10000 * 10000)
 // #define SIM_VK_LINE_BUFFER_SIZE (10000 * 10000)
 // #define SIM_VK_POINT_BUFFER_SIZE (10000 * 10000)
-
+SIM_DECLARE_CLASS_AND_PTR(cRenderGrid);
 struct tVkVertex
 {
     float pos[SIM_VK_VERTEX_POS_SIZE];
@@ -66,6 +76,7 @@ struct tVkDrawBuffer
  * \brief			Main Vulkan Draw Scene for acoustic simulator
  */
 class cSimScene;
+typedef std::vector<VkDescriptorSet> VkDescriptorSetArray;
 SIM_DECLARE_STRUCT_AND_PTR(CameraBase);
 class cDrawScene : public cScene
 {
@@ -74,9 +85,10 @@ public:
     explicit cDrawScene();
     virtual ~cDrawScene();
     virtual void Init(const std::string &conf_path) override;
-    virtual void AddRenderResource(cRenderResourcePtr render_resource);
+    virtual void
+    AddRenderResource(std::vector<cRenderResourcePtr> render_resource);
     virtual void ClearRenderResource();
-    virtual void Update(FLOAT dt) override;
+    virtual void Update(_FLOAT dt) override;
     void MainLoop();
     void Resize(int w, int h);
     virtual void CursorMove(int xpos, int ypos);
@@ -131,26 +143,26 @@ protected:
     void CreateSemaphores();
     void RecreateSwapChain();
     virtual void CleanSwapChain();
-    void CreateVertexBufferGround();
 
     void CreateTriangleBufferSim(int size = 65536);
     void CreateLineBuffer(int size = 65536);
     void CreatePointBuffer(int size = 65536);
     void CreateMVPUniformBuffer();
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-    void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
-                      VkMemoryPropertyFlags props, VkBuffer &buffer,
-                      VkDeviceMemory &buffer_memory);
+    // void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+    //                   VkMemoryPropertyFlags props, VkBuffer &buffer,
+    //                   VkDeviceMemory &buffer_memory);
     void CreateDescriptorSetLayout();
     void CreateColorResources(); // for MSAA
     void UpdateMVPUniformValue(int image_idx);
-    void UpdateVertexBufferSimObj(int idx);
-    void UpdateVertexBufferGround(int idx);
+    void UpdateTriangleBufferSimObj(int idx);
     void UpdateLineBuffer(int idx);
     void UpdatePointBuffer(int idx);
 
-    void CreateDescriptorPool();
-    void CreateDescriptorSets();
+    void CreateDescriptorPool(VkDescriptorPool &desc_pool,
+                              int num_of_desc) const;
+    void CreateDescriptorSets(VkDescriptorSetArray &desc_sets) const;
+
     int GetNumOfTriangleVertices() const;
     int GetNumOfLineVertices() const;
     int GetNumOfDrawPoints() const;
@@ -193,19 +205,21 @@ protected:
     bool mAddNoiseWhenReset =
         false; // add noise when the simulation is reset or not
 
-    tVkDrawBuffer mSimTriangleBuffer, mGroundTriangleBuffer, mLineBuffer,
-        mPointDrawBuffer;
+    tVkDrawBuffer mSimTriangleBuffer, mLineBuffer, mPointDrawBuffer;
     bool mBufferReallocated;
     // buffers used for uniform objects
     std::vector<VkBuffer> mMVPUniformBuffers;             // MVP uniform buffer
     std::vector<VkDeviceMemory> mMVPUniformBuffersMemory; // their memories
     VkDescriptorPool mDescriptorPool;
-    std::vector<VkDescriptorSet> mDescriptorSets; // real descriptor
+
+    VkDescriptorSetArray mDescriptorSets; // real descriptor, [g_id *
+                                          // mSwapChainImages.size() + img_id]
     CameraBasePtr mCamera;
 
     struct
     {
-        VkDeviceSize mCmdBufferRecorded_tri_size, mCmdBufferRecorded_line_size,
+        std::vector<VkDeviceSize> mCmdBufferRecorded_tri_size;
+        VkDeviceSize mCmdBufferRecorded_line_size,
             mCmdBufferRecorded_point_size;
     } mCmdBufferRecordInfo;
     // add MSAA support (big buffer)
@@ -214,9 +228,8 @@ protected:
     VkImageView mColorImageViewMSAA;
 
     // add ground texture image
-    VkImage mTextureImage;
-    VkImageView mTextureImageView;
-    VkDeviceMemory mTextureImageMemory;
+    // VkImage mTextureImage;
+    // VkImageView mTextureImageView;
 
     // add depth attachment
     VkImage mDepthImage;
@@ -233,11 +246,20 @@ protected:
     // tVector3 mCameraInitPos, mCameraInitFocus;
     // float mCameraInitFov;
     std::string mGroundPNGPath;
+    bool mEnableAxes;
+    bool mEnableGround;
+    float mGroundHeight;
     bool mSceneIsTheLastRenderPass;
+    bool mEnableCamAutoRot; // rotate the camera
+    bool mEnableGrid;
+    cRenderGridPtr mGrid;
     bool mSingleFrameSimulationMode = false;
     std::vector<cRenderResourcePtr> mRenderResourceArray;
 
+    // cRenderResourceGrouperPtr
+    //     mRenderResourceGrouper; // grouping the render resources
     virtual bool NeedRecreateCommandBuffers();
     virtual void DestoryCommandBuffers();
+    virtual void SetGroundHeight(float val);
 };
 SIM_DECLARE_PTR(cDrawScene);

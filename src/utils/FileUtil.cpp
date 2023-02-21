@@ -360,7 +360,7 @@ std::string cFileUtil::ReadTextFile(const std::string &path)
 }
 
 bool cFileUtil::ReadTable(const std::string &filename,
-                          std::vector<std::vector<FLOAT>> &out_buffer)
+                          std::vector<std::vector<_FLOAT>> &out_buffer)
 {
     std::fstream f_stream(filename);
     out_buffer.clear();
@@ -375,7 +375,7 @@ bool cFileUtil::ReadTable(const std::string &filename,
     {
         if (str.size() > 0)
         {
-            std::vector<FLOAT> curr_array;
+            std::vector<_FLOAT> curr_array;
 
             char_array = std::vector<char>(str.begin(), str.end());
             char_array.push_back(0);
@@ -394,7 +394,7 @@ bool cFileUtil::ReadTable(const std::string &filename,
                     }
                 }
 
-                FLOAT val = std::atof(p_char);
+                _FLOAT val = std::atof(p_char);
                 curr_array.push_back(val);
                 p_char = strtok(NULL, delims);
             }
@@ -525,8 +525,8 @@ std::string cFileUtil::ReadTextFile(FILE *f)
     return text;
 }
 
-std::string cFileUtil::mFileLockDir = "./logs/controller_logs/locks/";
-static std::map<std::string, int> write_descriptor;
+// std::string cFileUtil::mFileLockDir = "./logs/controller_logs/locks/";
+// static std::map<std::string, int> write_descriptor;
 
 #define LOCK_FAIL false
 #define LOCK_SUCCESS true
@@ -598,7 +598,8 @@ std::vector<std::string> cFileUtil::ListDir(std::string dir)
     return paths;
 }
 
-std::vector<std::string> cFileUtil::ReadFileAllLines(const std::string &filename)
+std::vector<std::string>
+cFileUtil::ReadFileAllLines(const std::string &filename)
 {
     if (false == cFileUtil::ExistsFile(filename))
     {
@@ -620,3 +621,5 @@ std::string cFileUtil::GetAbsPath(const std::string &filename)
 {
     return fs::absolute(filename);
 }
+
+std::string cFileUtil::GetCWD() { return fs::current_path().string(); }

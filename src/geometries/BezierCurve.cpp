@@ -3,10 +3,10 @@
 #include "utils/LogUtil.h"
 #include "utils/RenderUtil.h"
 #include <iostream>
-tVectorX GetLinspace(FLOAT low, FLOAT high, int num_of_points)
+tVectorX GetLinspace(_FLOAT low, _FLOAT high, int num_of_points)
 {
     SIM_ASSERT(num_of_points > 1);
-    FLOAT step = (high - low) / (num_of_points - 1);
+    _FLOAT step = (high - low) / (num_of_points - 1);
     tVectorX res = tVectorX::Zero(num_of_points);
     for (int i = 0; i < num_of_points; i++)
     {
@@ -88,9 +88,9 @@ void cBezierCurve::InitPointlist(tMatrixX &point_lst)
     }
 }
 
-FLOAT cBezierCurve::GetTotalLength() const
+_FLOAT cBezierCurve::GetTotalLength() const
 {
-    FLOAT total_length = 0;
+    _FLOAT total_length = 0;
     for (int i = 0; i < this->mPointList.cols() - 1; i++)
     {
         total_length += (mPointList.col(i + 1) - mPointList.col(i)).norm();

@@ -41,7 +41,7 @@ bool cObjExporter::ExportObj(std::string export_path,
         {
             auto v = vertices_array[i];
             std::string cur_str = format_string(
-                "vt %.5f %.5f\n", v->muv[0] * 0.3, v->muv[1] * 0.3);
+                "vt %.5f %.5f\n", v->muv_simple[0] * 0.3, v->muv_simple[1] * 0.3);
             fout << cur_str;
         }
     }

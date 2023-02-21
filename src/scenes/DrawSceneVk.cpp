@@ -1,5 +1,6 @@
 #include "DrawScene.h"
 #include "scenes/SimScene.h"
+#include "scenes/TextureManager.h"
 #include "utils/LogUtil.h"
 #include "utils/MathUtil.h"
 #include "vulkan/vulkan.h"
@@ -31,6 +32,11 @@ extern std::vector<const char *> validationLayers;
 extern std::vector<const char *> deviceExtensions;
 extern GLFWwindow *gGLFWWindow;
 extern bool enableValidationLayers;
+
+extern void CreateBuffer(VkDevice mDevice, VkPhysicalDevice mPhysicalDevice,
+                         VkDeviceSize size, VkBufferUsageFlags usage,
+                         VkMemoryPropertyFlags props, VkBuffer &buffer,
+                         VkDeviceMemory &buffer_memory);
 
 /**
  * \brief           the details about the support for swapchain, on current
@@ -126,7 +132,7 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,
 /**
  * \brief       select the best surface format(color channels and types)
  */
-VkSurfaceFormatKHR
+static VkSurfaceFormatKHR
 chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> availableFormats)
 {
     for (auto &x : availableFormats)
@@ -190,7 +196,7 @@ extern bool checkDeviceExtensionSupport(VkPhysicalDevice device);
  * \brief       Check whether an device is suitable for us
  *      Devices are not equal
  */
-bool IsDeviceSuitable(VkPhysicalDevice &dev, VkSurfaceKHR surface)
+static bool IsDeviceSuitable(VkPhysicalDevice &dev, VkSurfaceKHR surface)
 {
     // VkPhysicalDeviceProperties props;
     // VkPhysicalDeviceFeatures feas;
@@ -253,7 +259,7 @@ int RateDeviceSutability(VkPhysicalDevice &dev, VkSurfaceKHR surface)
     return score;
 }
 
-VkSampleCountFlagBits GetMaxUsableSampleCount(VkPhysicalDevice device)
+static VkSampleCountFlagBits GetMaxUsableSampleCount(VkPhysicalDevice device)
 {
     VkPhysicalDeviceProperties physicalDeviceProperties;
     vkGetPhysicalDeviceProperties(device, &physicalDeviceProperties);
@@ -296,7 +302,7 @@ void cDrawScene::CreateInstance()
         appInfo{}; // it contains a pNext member for further extension
     appInfo.sType =
         VK_STRUCTURE_TYPE_APPLICATION_INFO; // type should be set manually
-    appInfo.pApplicationName = "DiffFabric";
+    appInfo.pApplicationName = "YarnSim";
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -437,12 +443,19 @@ void cDrawScene::PickPhysicalDevice()
     {
         auto x = devices[i];
         int score = RateDeviceSutability(x, mSurface);
-        // std::cout << "device " << i << " score " << score << std::endl;
-        candidates.insert(std::make_pair(RateDeviceSutability(x, mSurface), x));
+        SIM_INFO("device {} score {}", i, score);
+        if (score == 0)
+        {
+            printf("ignore device %d\n", i);
+        }
+        else
+        {
+            candidates.insert(std::make_pair(score, x));
+        }
     }
-    SIM_ASSERT(candidates.size() > 0);
+    SIM_ASSERT(candidates.size() > 0 && "no avaliable devices");
     // fetch the highest score physical device
-    SIM_ASSERT(candidates.begin()->first > 0);
+    SIM_ASSERT(candidates.begin()->first > 0 && "no avaliable devices");
     // std::cout << candidates.begin()->first << std::endl;
     mPhysicalDevice = candidates.begin()->second;
 
@@ -691,10 +704,10 @@ VkShaderModule cDrawScene::CreateShaderModule(const std::vector<char> &code)
  * \brief           Given physical device and tiling/feature requirements,
  * select the cnadidates VkFormat used for depth attachment.
  */
-VkFormat findSupportedFormat(VkPhysicalDevice mPhyDevice,
-                             const std::vector<VkFormat> &candidates,
-                             VkImageTiling tiling,
-                             VkFormatFeatureFlags features)
+static VkFormat findSupportedFormat(VkPhysicalDevice mPhyDevice,
+                                    const std::vector<VkFormat> &candidates,
+                                    VkImageTiling tiling,
+                                    VkFormatFeatureFlags features)
 {
     for (const auto &format : candidates)
     {
@@ -939,9 +952,9 @@ void cDrawScene::RecreateSwapChain()
     CreateDepthResources();
     CreateFrameBuffers();
     CreateMVPUniformBuffer();
-    CreateDescriptorPool();
-    CreateDescriptorSets();
-    CreateCommandBuffers();
+    // CreateDescriptorPool(mDescriptorPool, 2);
+    // CreateDescriptorSets(mDescriptorSets, 2);
+    // CreateCommandBuffers();
 
     mImagesInFlight.resize(mSwapChainImages.size(), VK_NULL_HANDLE);
 }
@@ -960,6 +973,14 @@ void cDrawScene::CreateLineCommandBuffers(int i)
     vkCmdBindDescriptorSets(mCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
                             mPipelineLayout, 0, 1, &mDescriptorSets[i], 0,
                             nullptr);
+
+    tMaterialPushConstant constants;
+    constants.enable_texture = false;
+    constants.enable_phongmodel = false;
+    constants.enable_basic_color = true;
+    vkCmdPushConstants(mCommandBuffers[i], mPipelineLayout,
+                       VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                       sizeof(tMaterialPushConstant), &constants);
 
     vkCmdDraw(mCommandBuffers[i], GetNumOfLineVertices(), 1, 0, 0);
     mCmdBufferRecordInfo.mCmdBufferRecorded_line_size = GetNumOfLineVertices();
@@ -981,6 +1002,12 @@ void cDrawScene::CreatePointCommandBuffers(int i)
                             mPipelineLayout, 0, 1, &mDescriptorSets[i], 0,
                             nullptr);
 
+    tMaterialPushConstant constants;
+    constants.enable_texture = false;
+    vkCmdPushConstants(mCommandBuffers[i], mPipelineLayout,
+                       VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                       sizeof(tMaterialPushConstant), &constants);
+
     vkCmdDraw(mCommandBuffers[i], GetNumOfDrawPoints(), 1, 0, 0);
     mCmdBufferRecordInfo.mCmdBufferRecorded_point_size = GetNumOfDrawPoints();
 }
@@ -992,7 +1019,8 @@ void cDrawScene::CreateLineBuffer(int size)
         mLineBuffer.DestroyAndFree(mDevice);
     }
     mLineBuffer.mSize = size;
-    CreateBuffer(mLineBuffer.mSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    CreateBuffer(mDevice, mPhysicalDevice, mLineBuffer.mSize,
+                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                  mLineBuffer.mBuffer, mLineBuffer.mMemory);
@@ -1006,7 +1034,8 @@ void cDrawScene::CreatePointBuffer(int size)
         mPointDrawBuffer.DestroyAndFree(mDevice);
     }
     mPointDrawBuffer.mSize = size;
-    CreateBuffer(mPointDrawBuffer.mSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    CreateBuffer(mDevice, mPhysicalDevice, mPointDrawBuffer.mSize,
+                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                  mPointDrawBuffer.mBuffer, mPointDrawBuffer.mMemory);
@@ -1018,16 +1047,17 @@ void cDrawScene::UpdateLineBuffer(int idx)
     // update
     VkDeviceSize buffer_size =
         sizeof(float) * RENDERING_SIZE_PER_VERTICE * GetNumOfLineVertices();
-
+    if (buffer_size == 0)
+        return;
     // 1. if the size of mLineBufferMemory < buffer_size, recreate it
     if (buffer_size > mLineBuffer.mSize)
     {
         int new_size = GetNewSize(mLineBuffer.mSize, buffer_size);
         CreateLineBuffer(new_size);
 
-        printf("[warn] line draw buffer size %lu < resource size %lu, "
+        printf("[warn] line draw buffer size %d < resource size %d, "
                "reallocate! reallocate %d\n",
-                mLineBuffer.mSize, buffer_size, new_size);
+               mLineBuffer.mSize, buffer_size, new_size);
         mBufferReallocated = true;
     }
 
@@ -1057,7 +1087,7 @@ void cDrawScene::UpdateLineBuffer(int idx)
 /**
  * \brief       judge whether a format contains the stencil buffer
  */
-bool HasStencilComponent(VkFormat format)
+static bool HasStencilComponent(VkFormat format)
 {
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
            format == VK_FORMAT_D24_UNORM_S8_UINT;
@@ -1253,9 +1283,8 @@ void cDrawScene::CreateColorResources()
 /**
  * \brief               Create Image texture
  */
-#define STB_IMAGE_IMPLEMENTATION
+
 #include "utils/FileUtil.h"
-#include "utils/stb_image.h"
 
 void copyBufferToImage(VkDevice device, VkCommandPool commandPool,
                        VkQueue graphicsQueue, VkBuffer buffer, VkImage image,
@@ -1283,56 +1312,8 @@ void copyBufferToImage(VkDevice device, VkCommandPool commandPool,
 
 void cDrawScene::CreateTextureImage()
 {
-    // 1. load the image from the file
-    int tex_width, tex_height, tex_channels;
-    // std::string mGroundPNGPath = "";
-    SIM_ASSERT(cFileUtil::ExistsFile(mGroundPNGPath));
-    stbi_uc *pixels = stbi_load(mGroundPNGPath.c_str(), &tex_width, &tex_height,
-                                &tex_channels, STBI_rgb_alpha);
-    SIM_ASSERT(tex_channels == 4);
-    VkDeviceSize image_size = tex_width * tex_height * tex_channels;
-
-    if (!pixels)
-    {
-        throw std::runtime_error("failed to load texture image!");
-    }
-
+    // auto tex_info = std::make_shared<cTextureInfo>(mGroundPNGPath);
     // 2. create the staging buffer, write the image to the staging buffer
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    CreateBuffer(image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                 stagingBuffer, stagingBufferMemory);
-
-    void *data = nullptr;
-    vkMapMemory(mDevice, stagingBufferMemory, 0, image_size, 0, &data);
-    memcpy(data, pixels, image_size);
-    vkUnmapMemory(mDevice, stagingBufferMemory);
-
-    stbi_image_free(pixels);
-
-    // 3. create & allocate the texture image
-    CreateImage(mDevice, mPhysicalDevice, tex_width, tex_height,
-                VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB,
-                VK_IMAGE_TILING_OPTIMAL,
-                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mTextureImage,
-                mTextureImageMemory);
-
-    // 4. send the staging buffer to the image? how to do that?
-    transitionImageLayout(mDevice, mGraphicsQueue, mCommandPool, mTextureImage,
-                          VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copyBufferToImage(mDevice, mCommandPool, mGraphicsQueue, stagingBuffer,
-                      mTextureImage, static_cast<uint32_t>(tex_width),
-                      static_cast<uint32_t>(tex_height));
-    transitionImageLayout(mDevice, mGraphicsQueue, mCommandPool, mTextureImage,
-                          VK_FORMAT_R8G8B8A8_SRGB,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    vkDestroyBuffer(mDevice, stagingBuffer, nullptr);
-    vkFreeMemory(mDevice, stagingBufferMemory, nullptr);
 
     // SIM_INFO("Create texture image succ");
 }
@@ -1342,9 +1323,8 @@ void cDrawScene::CreateTextureImage()
  */
 void cDrawScene::CreateTextureImageView()
 {
-    mTextureImageView =
-        CreateImageView(mDevice, mTextureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                        VK_IMAGE_ASPECT_COLOR_BIT);
+    // mTextureImageView =
+
     // SIM_INFO("create texture image view succ");
 }
 

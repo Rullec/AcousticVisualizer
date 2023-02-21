@@ -14,7 +14,7 @@ bool cTimeUtil::HasBegin(const std::string &name)
     return mTimeTable.find(name) != mTimeTable.end();
 }
 
-FLOAT cTimeUtil::End(const std::string &name, bool silent /* = false*/)
+_FLOAT cTimeUtil::End(const std::string &name, bool silent /* = false*/)
 {
     time_it = mTimeTable.find(name);
     if (time_it == mTimeTable.end())
@@ -24,7 +24,7 @@ FLOAT cTimeUtil::End(const std::string &name, bool silent /* = false*/)
         exit(1);
     }
 
-    FLOAT cost =
+    _FLOAT cost =
         (high_resolution_clock::now() - time_it->second).count() * 1e-6;
     if (silent == false)
         std::cout << "[log] " << name << " cost time = " << cost << " ms\n";
@@ -70,7 +70,7 @@ std::chrono::system_clock::time_point cTimeUtil::GetCurrentTime_chrono()
 {
     return std::chrono::system_clock::now();
 }
-FLOAT cTimeUtil::CalcTimeElaspedms(
+_FLOAT cTimeUtil::CalcTimeElaspedms(
     const std::chrono::system_clock::time_point &st,
     const std::chrono::system_clock::time_point &ed)
 {

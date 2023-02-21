@@ -2,6 +2,8 @@
 #include "ArcBallCamera.h"
 #include "FPSCamera.h"
 #include "OrthoCamera.h"
+#include "utils/LogUtil.h"
+#include "utils/json/json.h"
 #include <iostream>
 
 CameraBasePtr cCameraFactory::instance(new cArcBallCamera(),
@@ -25,9 +27,9 @@ void cCameraFactory::ChangeCamera(const Json::Value &camera_json)
         tVector3(camera_pos_json[0].asFloat(), camera_pos_json[1].asFloat(),
                  camera_pos_json[2].asFloat());
 
-    FLOAT near_plane_dist = cJsonUtil::ParseAsFloat("near", camera_json);
-    FLOAT far_plane_dist = cJsonUtil::ParseAsFloat("far", camera_json);
-    FLOAT mCameraInitFov = 0;
+    _FLOAT near_plane_dist = cJsonUtil::ParseAsFloat("near", camera_json);
+    _FLOAT far_plane_dist = cJsonUtil::ParseAsFloat("far", camera_json);
+    _FLOAT mCameraInitFov = 0;
     if (camera_json.isMember("fov") == true)
     {
         mCameraInitFov = cJsonUtil::ParseAsFloat("fov", camera_json);
@@ -56,7 +58,7 @@ void cCameraFactory::ChangeCamera(const Json::Value &camera_json)
     case eCameraType::ORTHO_CAMERA:
     {
 
-        FLOAT init_box =
+        _FLOAT init_box =
             cJsonUtil::ParseAsFloat("camera_init_box", camera_json);
         instance = std::make_shared<cOrthoCamera>(
             mCameraInitPos, mCameraInitFocus, tVector3(0, 1, 0), init_box,

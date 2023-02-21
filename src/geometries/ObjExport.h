@@ -1,5 +1,5 @@
 #pragma once
-#include "Primitives.h"
+#include "utils/DefUtil.h"
 #include <string>
 #include <vector>
 /**
@@ -19,6 +19,9 @@
 //                           const std::vector<tVertexPtr > &vertices_array,
 //                           const std::vector<tTriangle *> &triangles_array);
 // };
+SIM_DECLARE_STRUCT_AND_PTR(tVertex);
+SIM_DECLARE_STRUCT_AND_PTR(tEdge);
+SIM_DECLARE_STRUCT_AND_PTR(tTriangle);
 class cObjExporter
 {
 public:

@@ -1,15 +1,18 @@
 #include "Triangulator.h"
 #include "geometries/ObjUtil.h"
+#include "geometries/Primitives.h"
 #include "utils/ColorUtil.h"
 #include "utils/FileUtil.h"
 #include "utils/JsonUtil.h"
 #include "utils/RotUtil.h"
+#include "utils/json/json.h"
 #include <iostream>
 #include <map>
+
 typedef std::pair<int, int> int_pair;
 #define BUILD_PAIR(a, b) SIM_MIN(a, b), SIM_MAX(a, b)
-void BuildTriangleEdgeId(const std::vector<tEdgePtr> &edges_array,
-                         std::vector<tTrianglePtr> &triangles_array)
+static void BuildTriangleEdgeId(const std::vector<tEdgePtr> &edges_array,
+                                std::vector<tTrianglePtr> &triangles_array)
 {
     // 1. build map v to id
     std::map<int_pair, int> edge_vpair_to_id = {};
@@ -37,11 +40,10 @@ void cTriangulator::BuildGeometry(const Json::Value &config,
     std::string geo_type =
         cJsonUtil::ParseAsString(cTriangulator::GEOMETRY_TYPE_KEY, config);
     tVector2 cloth_shape =
-        cJsonUtil::ReadVectorJson(cJsonUtil::ParseAsValue("cloth_size", config))
-            .segment(0, 2);
+        cJsonUtil::ReadVectorJson("cloth_size", config).segment(0, 2);
     tVector4 cloth_init_pos = tVector4::Zero();
     tVector4 cloth_init_orientation = tVector4::Zero();
-    FLOAT cloth_uv_rotation = cJsonUtil::ParseAsFloat(
+    _FLOAT cloth_uv_rotation = cJsonUtil::ParseAsFloat(
         "cloth_uv_rotation", config); // rotate the martieral coordinates.
 
     /*
@@ -50,11 +52,9 @@ void cTriangulator::BuildGeometry(const Json::Value &config,
         weft: y+
     */
     {
-        cJsonUtil::ReadVectorJson(
-            cJsonUtil::ParseAsValue("cloth_init_pos", config), cloth_init_pos);
-        cJsonUtil::ReadVectorJson(
-            cJsonUtil::ParseAsValue("cloth_init_orientation", config),
-            cloth_init_orientation);
+        cloth_init_pos = cJsonUtil::ReadVectorJson("cloth_init_pos", config);
+        cloth_init_orientation =
+            cJsonUtil::ReadVectorJson("cloth_init_orientation", config);
     }
     // std::cout << "cloth init pos = " << cloth_init_pos.transpose() <<
     // std::endl; std::cout << "cloth init orientation = " <<
@@ -63,10 +63,10 @@ void cTriangulator::BuildGeometry(const Json::Value &config,
         cRotUtil::TransformMat(cloth_init_pos, cloth_init_orientation);
     // std::cout << init_trans_mat << std::endl;
     // exit(0);
-    Json::Value subdivision_json =
-        cJsonUtil::ParseAsValue("subdivision", config);
-    tVector2i subdivision =
-        cJsonUtil::ReadVectorJson(subdivision_json).segment(0, 2).cast<int>();
+
+    tVector2i subdivision = cJsonUtil::ReadVectorJson("subdivision", config)
+                                .segment(0, 2)
+                                .cast<int>();
     // if (geo_type == "uniform_square")
     // {
     //     SIM_ERROR("geo type uniform_square has been deprecated, because it "
@@ -148,13 +148,13 @@ void cTriangulator::BuildGeometry_UniformTriangle(
     edges_array.clear();
     triangles_array.clear();
 
-    FLOAT height = mesh_shape.x();
-    FLOAT width = mesh_shape.y();
+    _FLOAT height = mesh_shape.x();
+    _FLOAT width = mesh_shape.y();
     int num_of_height_div = subdivision.x();
     int num_of_width_div = subdivision.y();
-    FLOAT unit_edge_h = height / num_of_height_div;
-    FLOAT unit_edge_w = width / num_of_width_div;
-    FLOAT unit_edge_skew =
+    _FLOAT unit_edge_h = height / num_of_height_div;
+    _FLOAT unit_edge_w = width / num_of_width_div;
+    _FLOAT unit_edge_skew =
         std::sqrt(unit_edge_h * unit_edge_h + unit_edge_w * unit_edge_w);
     /*
     (0, 0), HEIGHT dimension, col
@@ -392,8 +392,8 @@ void cTriangulator::BuildGeometry_UniformTriangle(
 /**
  * \brief                   create vertices as a uniform, rectangle vertices
  */
-void cTriangulator::BuildRectVertices(FLOAT height, FLOAT width, int height_div,
-                                      int width_div,
+void cTriangulator::BuildRectVertices(_FLOAT height, _FLOAT width,
+                                      int height_div, int width_div,
                                       std::vector<tVertexPtr> &vertices_array,
                                       bool add_vertices_perturb)
 {
@@ -414,11 +414,11 @@ void cTriangulator::BuildRectVertices(FLOAT height, FLOAT width, int height_div,
     x+ width dimension
     cartesian pos (0, width_div)
     */
-    FLOAT unit_edge_h = height / height_div;
-    FLOAT unit_edge_w = width / width_div;
+    _FLOAT unit_edge_h = height / height_div;
+    _FLOAT unit_edge_w = width / width_div;
 
-    FLOAT noise_radius_height = unit_edge_h / 5,
-          noise_radius_width = unit_edge_w / 5;
+    _FLOAT noise_radius_height = unit_edge_h / 5,
+           noise_radius_width = unit_edge_w / 5;
     // FLOAT noise_max_radius = 0;
 
     tVector4 center_pos = tVector4(width / 2, height / 2, 0, 0);
@@ -431,7 +431,7 @@ void cTriangulator::BuildRectVertices(FLOAT height, FLOAT width, int height_div,
             // coords
             v->mPos = tVector4(i * unit_edge_w, j * unit_edge_h, 0, 1);
             v->mColor = ColorAn;
-            v->muv = tVector2::Zero();
+            v->muv_simple = tVector2::Zero();
 
             // move the center
             v->mPos -= center_pos;
@@ -450,13 +450,13 @@ void cTriangulator::BuildRectVertices(FLOAT height, FLOAT width, int height_div,
             // printf("[debug] add vertex (%d, %d) at pos (%.3f, %.3f, %.3f),
             // tex "
             //        "(%.2f, %.2f)\n",
-            //        i, j, v->mPos[0], v->mPos[1], v->mPos[2], v->muv[0],
-            //        v->muv[1]);
+            //        i, j, v->mPos[0], v->mPos[1], v->mPos[2], v->muv_simple[0],
+            //        v->muv_simple[1]);
             vertices_array.push_back(v);
         }
 }
 
-bool ConfirmVertexInTriangles(tTrianglePtr tri, int vid)
+static bool ConfirmVertexInTriangles(tTrianglePtr tri, int vid)
 {
     return (tri->mId0 == vid) || (tri->mId1 == vid) || (tri->mId2 == vid);
 };
@@ -586,8 +586,7 @@ void cTriangulator::LoadGeometry(std::vector<tVertexPtr> &vertices_array,
         vertices_array[vertices_array.size() - 1]->mColor = ColorAn;
     }
 
-    const tVectorX &edge_info = cJsonUtil::ReadVectorJson(
-        cJsonUtil::ParseAsValue(EDGE_ARRAY_KEY, root));
+    const tVectorX &edge_info = cJsonUtil::ReadVectorJson(EDGE_ARRAY_KEY, root);
 
     for (int i = 0; i < edge_info.size() / 2; i++)
     {
@@ -620,7 +619,7 @@ void cTriangulator::LoadGeometry(std::vector<tVertexPtr> &vertices_array,
 
 void cTriangulator::RotateMaterialCoordsAfterReset(
     const tMatrix4 &init_mat_inv, std::vector<tVertexPtr> &vertices_array,
-    FLOAT cloth_uv_rotation_)
+    _FLOAT cloth_uv_rotation_)
 {
     // degrees
     SIM_ASSERT(int(cloth_uv_rotation_) == 0 || int(cloth_uv_rotation_) == 45 ||
@@ -628,7 +627,7 @@ void cTriangulator::RotateMaterialCoordsAfterReset(
 
     // rad
 
-    FLOAT cloth_uv_rotation = cloth_uv_rotation_ / 180.0 * M_PI;
+    _FLOAT cloth_uv_rotation = cloth_uv_rotation_ / 180.0 * M_PI;
     tMatrix2 rot_mat = cRotUtil::RotMat2D(cloth_uv_rotation);
     // std::cout << "angle = " << cloth_uv_rotation << ", rotmat = \n"
     //           << rot_mat << std::endl;
@@ -645,13 +644,13 @@ void cTriangulator::RotateMaterialCoordsAfterReset(
         auto x = vertices_array[i];
         // default origin is (0, 0)
         tVector2 cur_pos = (init_mat_inv * x->mPos).segment(0, 2);
-        x->muv = rot_mat * cur_pos;
+        x->muv_simple = rot_mat * cur_pos;
         // if (i < 10)
         //     std::cout << "i " << i << " cur pos " << cur_pos.transpose()
-        //               << " uv = " << x->muv.transpose() << std::endl;
+        //               << " uv = " << x->muv_simple.transpose() << std::endl;
         // std::cout << "x pos = " << cur_pos.transpose()
-        //           << ", uv = " << x->muv.transpose() << std::endl;
-        // std::cout << x->muv.transpose() << std::endl;
+        //           << ", uv = " << x->muv_simple.transpose() << std::endl;
+        // std::cout << x->muv_simple.transpose() << std::endl;
     }
     // exit(1);
 }
@@ -755,7 +754,7 @@ void cTriangulator::BuildEdgesTriangleId(
     }
 }
 void cTriangulator::RotateMaterialCoords(
-    FLOAT cur_uv_rot_deg, FLOAT tar_uv_rot_deg,
+    _FLOAT cur_uv_rot_deg, _FLOAT tar_uv_rot_deg,
     std::vector<tVertexPtr> &vertices_array)
 {
     // std::cout << "---------------------\n";
@@ -777,15 +776,15 @@ void cTriangulator::RotateMaterialCoords(
         if (output)
         {
             std::cout << "[tri] vertex " << idx
-                      << " raw uv = " << v->muv.transpose() << std::endl;
+                      << " raw uv = " << v->muv_simple.transpose() << std::endl;
         }
-        v->muv = convert_mat * v->muv;
+        v->muv_simple = convert_mat * v->muv_simple;
         if (output)
         {
             std::cout << "[tri] vertex " << idx
-                      << " new uv = " << v->muv.transpose() << std::endl;
+                      << " new uv = " << v->muv_simple.transpose() << std::endl;
         }
-        // std::cout << "new uv = " << v->muv.transpose() << std::endl;
+        // std::cout << "new uv = " << v->muv_simple.transpose() << std::endl;
     }
     // std::cout << "---------------------\n";
     // exit(1);
@@ -802,13 +801,13 @@ void cTriangulator::BuildGeometry_SingleTriangle(
     edges_array.clear();
     triangles_array.clear();
 
-    FLOAT height = mesh_shape.x();
-    FLOAT width = mesh_shape.y();
+    _FLOAT height = mesh_shape.x();
+    _FLOAT width = mesh_shape.y();
     int num_of_height_div = 1;
     int num_of_width_div = 1;
-    FLOAT unit_edge_h = height / num_of_height_div;
-    FLOAT unit_edge_w = width / num_of_width_div;
-    FLOAT unit_edge_skew =
+    _FLOAT unit_edge_h = height / num_of_height_div;
+    _FLOAT unit_edge_w = width / num_of_width_div;
+    _FLOAT unit_edge_skew =
         std::sqrt(unit_edge_h * unit_edge_h + unit_edge_w * unit_edge_w);
     /*
     (0, 0), HEIGHT dimension, col

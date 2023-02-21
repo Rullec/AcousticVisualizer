@@ -1,6 +1,6 @@
 #include "utils/EigenUtil.h"
 
-void removeRow(tMatrixX &matrix, unsigned int rowToRemove)
+static void removeRow(tMatrixX &matrix, unsigned int rowToRemove)
 {
     unsigned int numRows = matrix.rows() - 1;
     unsigned int numCols = matrix.cols();
@@ -12,7 +12,7 @@ void removeRow(tMatrixX &matrix, unsigned int rowToRemove)
     matrix.conservativeResize(numRows, numCols);
 }
 
-void removeRowVec(tVectorX &matrix, unsigned int rowToRemove)
+static void removeRowVec(tVectorX &matrix, unsigned int rowToRemove)
 {
     unsigned int numRows = matrix.rows() - 1;
 
@@ -23,7 +23,7 @@ void removeRowVec(tVectorX &matrix, unsigned int rowToRemove)
     matrix.conservativeResize(numRows);
 }
 
-void removeColumn(tMatrixX &matrix, unsigned int colToRemove)
+static void removeColumn(tMatrixX &matrix, unsigned int colToRemove)
 {
     unsigned int numRows = matrix.rows();
     unsigned int numCols = matrix.cols() - 1;

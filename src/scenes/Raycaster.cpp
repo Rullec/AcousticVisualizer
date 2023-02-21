@@ -1,6 +1,7 @@
 #include "Raycaster.h"
 #include "utils/JsonUtil.h"
 #include "utils/LogUtil.h"
+#include "utils/MathUtil.h"
 #include <iostream>
 
 cRaycaster::tRaycastResult::tRaycastResult()
@@ -8,7 +9,7 @@ cRaycaster::tRaycastResult::tRaycastResult()
     mObject = nullptr;
     mLocalTriangleId = -1;
     mIntersectionPoint =
-        tVector4::Ones() * std::numeric_limits<FLOAT>::quiet_NaN();
+        tVector4::Ones() * std::numeric_limits<_FLOAT>::quiet_NaN();
 }
 
 cRaycaster::cRaycaster()
@@ -20,9 +21,7 @@ cRaycaster::cRaycaster()
     // SIM_ASSERT(triangles != nullptr);
 }
 
-void cRaycaster::Init(const Json::Value &conf)
-{
-}
+void cRaycaster::Init(const Json::Value &conf) {}
 // void cRaycaster::AddResources(const std::vector<tTrianglePtr > triangles,
 //                               const std::vector<tVertexPtr> vertices)
 // {
@@ -52,7 +51,7 @@ cRaycaster::tRaycastResult cRaycaster::RayCast(const tRayPtr ray) const
 {
     // 1. init
     tRaycastResult res;
-    FLOAT min_depth = std::numeric_limits<FLOAT>::max();
+    _FLOAT min_depth = std::numeric_limits<_FLOAT>::max();
     // raycast_point.noalias() = tVector::Ones() * std::nan("");
     // std::cout << "triangle array lst size = " << mTriangleArray_lst.size()
     //           << std::endl;
@@ -72,7 +71,7 @@ cRaycaster::tRaycastResult cRaycaster::RayCast(const tRayPtr ray) const
             if (tmp.hasNaN() == false)
             {
                 // std::cout << tmp.transpose() << std::endl;
-                FLOAT cur_depth = (tmp - ray->mOrigin).segment(0, 3).norm();
+                _FLOAT cur_depth = (tmp - ray->mOrigin).segment(0, 3).norm();
                 if (cur_depth < min_depth)
                 {
                     min_depth = cur_depth;
@@ -106,4 +105,16 @@ void cRaycaster::CalcCastWindowSize(const tMatrix2i &cast_range_window,
     window_height = cast_range_window(1, 1) - cast_range_window(1, 0);
 
     st = cast_range_window.col(0).transpose();
+}
+
+void cRaycaster::Update(const std::vector<cBaseObjectPtr> &object_array)
+{
+    mTriangleArray_lst.clear();
+    mVertexArray_lst.clear();
+    mObjects = object_array;
+    for (auto &x : object_array)
+    {
+        mTriangleArray_lst.push_back(x->GetCollisionTriangleArray());
+        mVertexArray_lst.push_back(x->GetCollisionVertexArray());
+    }
 }

@@ -11,6 +11,7 @@
 #include "scenes/DrawSceneImGUI.h"
 #include "scenes/SimScene.h"
 #include "utils/JsonUtil.h"
+#include "utils/LogUtil.h"
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 GLFWwindow *gGLFWWindow = nullptr;
@@ -93,7 +94,7 @@ void cMainApp::InitGLFW()
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     gGLFWWindow = glfwCreateWindow(gWindowWidth, gWindowHeight,
-                                   "DiffFabric Simulator", nullptr, nullptr);
+                                   "AcousticVisualizer", nullptr, nullptr);
     glfwSetFramebufferSizeCallback(gGLFWWindow, ResizeCallback);
     glfwSetCursorPosCallback(gGLFWWindow, CursorPositionCallback);
     glfwSetMouseButtonCallback(gGLFWWindow, MouseButtonCallback);

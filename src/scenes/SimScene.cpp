@@ -9,8 +9,12 @@
 #include "sim/SimObjectBuilder.h"
 #include "utils/ColorUtil.h"
 #include "utils/JsonUtil.h"
+#include "utils/LogUtil.h"
+#include "utils/MathUtil.h"
 #include "utils/RenderUtil.h"
+#include "utils/json/json.h"
 #include <iostream>
+
 std::string gSceneTypeStr[eSceneType::NUM_OF_SCENE_TYPES] = {"sim", "diff_sim"};
 
 eSceneType cSimScene::BuildSceneType(const std::string &str)
@@ -38,8 +42,6 @@ cSimScene::cSimScene()
     mPerturb = nullptr;
     mSimStateMachine = std::make_shared<tSimStateMachine>();
     mSceneType = eSceneType::SCENE_SIM;
-    mRenderResource = std::make_shared<cRenderResource>();
-    mRenderResource->mName = "sim_scene";
 }
 
 eSceneType cSimScene::GetSceneType() const { return this->mSceneType; }
@@ -94,31 +96,7 @@ void cSimScene::SaveCurrentScene()
     }
 }
 
-void cSimScene::InitDrawBuffer()
-{
-    // 2. build arrays
-    // init the buffer
-    {
-        int num_of_triangles = GetNumOfTriangles();
-        int num_of_vertices = num_of_triangles * 3;
-        int size_per_vertices = RENDERING_SIZE_PER_VERTICE;
-        int trinalge_size = num_of_vertices * size_per_vertices;
-
-        mTriangleDrawBuffer.resize(trinalge_size);
-        // std::cout << "triangle draw buffer size = " <<
-        // mTriangleDrawBuffer.size() << std::endl; exit(0);
-    }
-    {
-
-        int size_per_edge = 2 * RENDERING_SIZE_PER_VERTICE;
-        mEdgesDrawBuffer.resize(GetNumOfDrawEdges() * size_per_edge);
-    }
-    {
-        int num_of_v = GetNumOfVertices();
-        mPointDrawBuffer.resize(num_of_v * RENDERING_SIZE_PER_VERTICE);
-    }
-    UpdateRenderingResource();
-}
+void cSimScene::InitDrawBuffer() { UpdateRenderingResource(); }
 
 /**
  * \brief           Init the raycasting strucutre
@@ -129,9 +107,7 @@ void cSimScene::InitRaycaster(const Json::Value &conf)
     mRaycaster = std::make_shared<cRaycaster>();
     mRaycaster->Init(conf);
     for (auto &x : mObjectList)
-    {
         mRaycaster->AddResources(x);
-    }
     std::cout << "[debug] add resources to raycaster done, num of objects = "
               << mObjectList.size() << std::endl;
 }
@@ -140,7 +116,7 @@ void cSimScene::InitRaycaster(const Json::Value &conf)
  */
 #include "utils/TimeUtil.hpp"
 static int frame = 0;
-void cSimScene::Update(FLOAT delta_time)
+void cSimScene::Update(_FLOAT delta_time)
 {
 
     if (mSimStateMachine->IsRunning() == true)
@@ -155,6 +131,7 @@ void cSimScene::Update(FLOAT delta_time)
 
         UpdateObjects();
         PerformCollisionDetection();
+        UpdateRaycaster();
         // clear force
         // apply ext force
         // update position
@@ -167,6 +144,7 @@ void cSimScene::Update(FLOAT delta_time)
  */
 void cSimScene::UpdateObjects()
 {
+
     // 1. update perturb on objects if possible
     if (mPerturb != nullptr)
     {
@@ -236,65 +214,32 @@ int cSimScene::GetNumOfTriangles() const
     }
     return num_of_triangles;
 }
-/**
- * \brief       external force
- */
-const tVectorXf &cSimScene::GetTriangleDrawBuffer()
-{
-    return mTriangleDrawBuffer;
-}
-/**
- * \brief           Calculate vertex rendering data
- */
-void cSimScene::CalcTriangleDrawBuffer()
-{
-    mTriangleDrawBuffer.fill(std::nan(""));
-    // 1. calculate for sim triangle
-    int st = 0;
-    Eigen::Map<tVectorXf> ref(mTriangleDrawBuffer.data(),
-                              mTriangleDrawBuffer.size());
-
-    // 2. calculate for obstacle triangle
-
-    for (auto &x : mObjectList)
-    {
-        x->CalcTriangleDrawBuffer(ref, st);
-    }
-
-    mRenderResource->mTriangleBuffer.mBuffer = mTriangleDrawBuffer.data();
-    mRenderResource->mTriangleBuffer.mNumOfEle = mTriangleDrawBuffer.size();
-}
-
-const tVectorXf &cSimScene::GetEdgesDrawBuffer() { return mEdgesDrawBuffer; }
-
+static std::string gUpdateRenderingResourceInfo = "";
+#include "utils/ProfUtil.h"
 void cSimScene::UpdateRenderingResource()
 {
-    CalcEdgesDrawBuffer();
-    CalcTriangleDrawBuffer();
-    CalcPointDrawBuffer();
+    cProfUtil::ClearRoot("render_res");
+    cProfUtil::Begin("render_res");
+
+    mRenderResource.clear();
+    for (auto &obj : mObjectList)
+    {
+        cProfUtil::Begin("render_res/" + obj->GetObjName());
+        obj->UpdateRenderingResource();
+        cProfUtil::End("render_res/" + obj->GetObjName());
+        auto cur_resource = obj->GetRenderingResource();
+        mRenderResource.insert(mRenderResource.end(), cur_resource.begin(),
+                               cur_resource.end());
+    }
+    cProfUtil::End("render_res");
+    gUpdateRenderingResourceInfo = cProfUtil::GetTreeDesc("render_res");
+    // CalcEdgesDrawBuffer();
+    // CalcTriangleDrawBuffer();
+    // CalcPointDrawBuffer();
     // printf("[debug] sim scene tri %d edge %d point %d\n",
     //        this->mRenderResource->mTriangleBuffer.mNumOfEle,
     //        this->mRenderResource->mLineBuffer.mNumOfEle,
     //        this->mRenderResource->mPointBuffer.mNumOfEle);
-}
-
-int cSimScene::CalcEdgesDrawBuffer(int st /* = 0 */)
-{
-    SIM_ASSERT(st == 0);
-    mEdgesDrawBuffer.fill(std::nan(""));
-
-    Eigen::Map<tVectorXf> render_ref(mEdgesDrawBuffer.data() + st,
-                                     mEdgesDrawBuffer.size() - st);
-
-    // 2. for draw buffer
-
-    for (auto &x : mObjectList)
-    {
-        x->CalcEdgeDrawBuffer(render_ref, st);
-    }
-    mRenderResource->mLineBuffer.mBuffer = mEdgesDrawBuffer.data();
-    mRenderResource->mLineBuffer.mNumOfEle = mEdgesDrawBuffer.size();
-    return st;
 }
 
 cSimScene::~cSimScene()
@@ -340,6 +285,9 @@ void cSimScene::Key(int key, int scancode, int action, int mods)
         std::cout << "[draw scene] key S, save now\n";
         SaveCurrentScene();
         break;
+    case GLFW_KEY_R:
+        Reset();
+        break;
     }
 }
 
@@ -369,13 +317,20 @@ bool cSimScene::CreatePerturb(tRayPtr ray)
     const auto &ver_array = mPerturb->mObject->GetVertexArray();
     const auto &tri_array = mPerturb->mObject->GetTriangleArray();
 
+    auto cur_t = tri_array[res.mLocalTriangleId];
+    // printf("[cast] tri size %d v size %d, tid %d, v0 %d v1 %d v2 %d\n",
+    //        tri_array.size(), ver_array.size(), res.mLocalTriangleId,
+    //        cur_t->mId0, cur_t->mId1, cur_t->mId2);
     mPerturb->mBarycentricCoords =
         cMathUtil::CalcBarycentric(
-            res.mIntersectionPoint,
-            ver_array[tri_array[res.mLocalTriangleId]->mId0]->mPos,
-            ver_array[tri_array[res.mLocalTriangleId]->mId1]->mPos,
-            ver_array[tri_array[res.mLocalTriangleId]->mId2]->mPos)
+            res.mIntersectionPoint, ver_array[cur_t->mId0]->mPos,
+            ver_array[cur_t->mId1]->mPos, ver_array[cur_t->mId2]->mPos)
             .segment(0, 3);
+    // std::cout << cur_t->mColor.transpose() << std::endl;
+    // std::cout << cur_t->mNormal.transpose() << std::endl;
+    // std::cout << cur_t->mEId0 << std::endl;
+    // std::cout << cur_t->mEId1 << std::endl;
+    // std::cout << cur_t->mEId2 << std::endl;
     // std::cout << "[perturb] intersection pt (from raycast) = "
     //           << res.mIntersectionPoint.transpose() << std::endl;
     // std::cout << "[perturb] bary = " <<
@@ -383,26 +338,23 @@ bool cSimScene::CreatePerturb(tRayPtr ray)
     //           << std::endl;
 
     tVector4 restore_intersection_pt =
-        ver_array[tri_array[res.mLocalTriangleId]->mId0]->mPos *
-            mPerturb->mBarycentricCoords[0] +
-        ver_array[tri_array[res.mLocalTriangleId]->mId1]->mPos *
-            mPerturb->mBarycentricCoords[1] +
-        ver_array[tri_array[res.mLocalTriangleId]->mId2]->mPos *
-            mPerturb->mBarycentricCoords[2];
+        ver_array[cur_t->mId0]->mPos * mPerturb->mBarycentricCoords[0] +
+        ver_array[cur_t->mId1]->mPos * mPerturb->mBarycentricCoords[1] +
+        ver_array[cur_t->mId2]->mPos * mPerturb->mBarycentricCoords[2];
     // std::cout << "[perturb] restore_intersection_pt = "
     //           << restore_intersection_pt.transpose() << std::endl;
 
     // std::cout
     //     << "uv = "
-    //     << ver_array[tri_array[res.mLocalTriangleId]->mId0]->muv.transpose()
-    //     << " vid = " << tri_array[res.mLocalTriangleId]->mId0 << std::endl;
+    //     << ver_array[cur_t->mId0]->muv_simple.transpose()
+    //     << " vid = " << cur_t->mId0 << std::endl;
     SIM_ASSERT(mPerturb->mBarycentricCoords.hasNaN() == false);
     mPerturb->InitTangentRect(-1 * ray->mDir);
     mPerturb->UpdatePerturbPos(ray->mOrigin, ray->mDir);
 
-    // // change the color
-    mPerturb->mObject->ChangeTriangleColor(res.mLocalTriangleId,
-                                           ColorShoJoHi.segment(0, 3));
+    // change the color
+    // mPerturb->mObject->ChangeTriangleColor(res.mLocalTriangleId,
+    //                                        ColorShoJoHi.segment(0, 3));
     return true;
 }
 void cSimScene::ReleasePerturb()
@@ -411,8 +363,8 @@ void cSimScene::ReleasePerturb()
     {
         // restore the color
 
-        mPerturb->mObject->ChangeTriangleColor(mPerturb->mAffectedTriId,
-                                               ColorBlue.segment(0, 3));
+        // mPerturb->mObject->ChangeTriangleColor(mPerturb->mAffectedTriId,
+        //                                        ColorBlue.segment(0, 3));
         // 1, 0);
         delete mPerturb;
         mPerturb = nullptr;
@@ -490,52 +442,31 @@ void cSimScene::UpdateImGui()
     auto name = tSimStateMachine::BuildStateStr(cur_state);
     // std::cout << "cSimScene::UpdateImGui, cur state = " << cur_state << "
     // name = " << name << std::endl;
-    if (ImGui::CollapsingHeader("simulation options",
-                                ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::Text("simulation state: %s", name.c_str());
-
-        // update vertices and triangle number
-        int v_total = 0, t_total = 0;
-        for (auto &obj : this->mObjectList)
-        {
-            int num_of_v = obj->GetNumOfVertices();
-            int num_of_t = obj->GetNumOfTriangles();
-            v_total += num_of_v;
-            t_total += num_of_t;
-            ImGui::Text("%s v %d t %d", obj->GetObjName().c_str(), num_of_v,
-                        num_of_t);
-        }
-        ImGui::SameLine();
-        ImGui::Text("total v %d t %d", v_total, t_total);
-    }
-
+    ImGui::Text("simulation state: %s", name.c_str());
     for (auto &obj : this->mObjectList)
     {
         obj->UpdateImGui();
     }
-}
-
-const tVectorXf &cSimScene::GetPointDrawBuffer() { return mPointDrawBuffer; }
-
-void cSimScene::CalcPointDrawBuffer()
-{
-    mPointDrawBuffer.fill(std::nan(""));
-
-    Eigen::Map<tVectorXf> render_ref(mPointDrawBuffer.data(),
-                                     mPointDrawBuffer.size());
-
-    // 2. for draw buffer
-    int st = 0;
-    for (auto &x : mObjectList)
+    // update vertices and triangle number
+    int v_total = 0, t_total = 0;
+    for (auto &obj : this->mObjectList)
     {
-        x->CalcPointDrawBuffer(render_ref, st);
+        int num_of_v = obj->GetNumOfVertices();
+        int num_of_t = obj->GetNumOfTriangles();
+        v_total += num_of_v;
+        t_total += num_of_t;
+        ImGui::Text("%s v %d t %d", obj->GetObjName().c_str(), num_of_v,
+                    num_of_t);
     }
-    mRenderResource->mPointBuffer.mBuffer = mPointDrawBuffer.data();
-    mRenderResource->mPointBuffer.mNumOfEle = mPointDrawBuffer.size();
+    ImGui::SameLine();
+    ImGui::Text("total v %d t %d", v_total, t_total);
+    ImGui::Text(gUpdateRenderingResourceInfo.c_str());
 }
 
-cRenderResourcePtr cSimScene::GetRenderResource() { return mRenderResource; }
+std::vector<cRenderResourcePtr> cSimScene::GetRenderResource()
+{
+    return mRenderResource;
+}
 
 std::vector<cBaseObjectPtr> cSimScene::GetObjList() const
 {
@@ -543,3 +474,5 @@ std::vector<cBaseObjectPtr> cSimScene::GetObjList() const
 }
 
 void cSimScene::RunSimulator() { mSimStateMachine->Run(); }
+
+void cSimScene::UpdateRaycaster() { mRaycaster->Update(mObjectList); }

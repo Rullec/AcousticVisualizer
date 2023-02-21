@@ -1,10 +1,11 @@
 #include "KinematicBodyBuilder.h"
 #include "KinematicBody.h"
 #include "utils/JsonUtil.h"
+#include "utils/json/json.h"
 cBaseObjectPtr BuildKinematicBody(const Json::Value &conf, int id)
 {
     cBaseObjectPtr ptr = std::make_shared<cKinematicBody>(id);
-    ptr->Init(conf);
+
     return ptr;
 }
 
@@ -36,5 +37,7 @@ cBaseObjectPtr BuildKinematicBodyFromObjPath(std::string name,
     {
         root["orientation"].append(0);
     }
-    return BuildKinematicBody(root, id_);
+    auto ptr = BuildKinematicBody(root, id_);
+    ptr->Init(root);
+    return ptr;
 }

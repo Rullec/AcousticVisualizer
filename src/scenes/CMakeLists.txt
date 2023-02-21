@@ -13,6 +13,7 @@ add_library(
     DrawSceneImGUI.cpp
     SimCallback.cpp
     Raycaster.cpp
+    TextureManager.cpp
 )
 
 target_link_libraries(scenes_lib ${Vulkan_LIBRARIES} cam_lib imgui_lib implot_lib sim_lib ${GLFW3_LIBRARY} X11)

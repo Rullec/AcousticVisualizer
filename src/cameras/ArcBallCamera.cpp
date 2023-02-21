@@ -2,21 +2,27 @@
 // #include "Utils/MathUtil.h"
 #include "utils/MathUtil.h"
 #include "utils/RotUtil.h"
-
 cArcBallCamera::cArcBallCamera()
-    : CameraBase(tVector3::Ones() * 0.3, tVector3::Zero(), tVector3(0, 1, 0),
-                 50, 1e-4, 1e5)
+    : CameraBase(tVector3(2, 2, 2), tVector3(0, 0, 0), tVector3(0, 1, 0), 60,
+                 1e-4, 1e5)
 {
-
     mType = eCameraType::ARCBALL_CAMERA;
+
+    mCamFront = mCamCenter - mCamPos;
+    mCamFront.normalize();
     mouse_acc *= 5e-2;
-    key_acc *= 2e-1;
+    key_acc *= 2e-2;
+    // pos = tVector3(1, 1, 0);
+    // center = tVector3(0, 1, 0);
+    // up = tVector3(0, 1, 0);
+    // front = center - pos;
+    // front.normalize();
 }
 #include "utils/TimeUtil.hpp"
-cTimePoint start_time_pt = cTimeUtil::GetCurrentTime_chrono();
+static cTimePoint start_time_pt = cTimeUtil::GetCurrentTime_chrono();
 cArcBallCamera::cArcBallCamera(const tVector3 &pos, const tVector3 &center,
-                               const tVector3 &up, FLOAT fov, FLOAT near_plane,
-                               FLOAT far_plane)
+                               const tVector3 &up, _FLOAT fov,
+                               _FLOAT near_plane, _FLOAT far_plane)
     : CameraBase(pos, center, up, fov, near_plane, far_plane)
 {
     mType = eCameraType::ARCBALL_CAMERA;
@@ -73,7 +79,7 @@ void cArcBallCamera::MoveDown()
  * \brief           Pinned the center and rotate this arcball camera when mouse
  * moved
  */
-void cArcBallCamera::MouseMove(FLOAT mouse_x, FLOAT mouse_y)
+void cArcBallCamera::MouseMove(_FLOAT mouse_x, _FLOAT mouse_y)
 {
     if (first_mouse)
     {
@@ -124,7 +130,7 @@ void cArcBallCamera::MouseMove(FLOAT mouse_x, FLOAT mouse_y)
  * \brief           shift this arcball camera by mouse move
  */
 
-void cArcBallCamera::MiddleKeyMove(FLOAT mouse_x, FLOAT mouse_y)
+void cArcBallCamera::MiddleKeyMove(_FLOAT mouse_x, _FLOAT mouse_y)
 {
     // std::cout << "[debug] arcball middle key move = " << mouse_x << " "
     //           << mouse_y << std::endl;
@@ -146,7 +152,7 @@ void cArcBallCamera::MiddleKeyMove(FLOAT mouse_x, FLOAT mouse_y)
     tVector3 offset_vec_world =
         -ViewMatrix().block(0, 0, 3, 3).inverse() * offset_vec;
     // move slower when the camera is near to the center
-    FLOAT dist_scale = (mCamPos - mCamCenter).norm();
+    _FLOAT dist_scale = (mCamPos - mCamCenter).norm();
     offset_vec_world *= dist_scale * 2e-1;
 
     // 4. move the camera

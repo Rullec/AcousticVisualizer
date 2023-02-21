@@ -1,3 +1,5 @@
+#ifndef ROTUTIL_H_
+#define ROTUTIL_H_
 #include "utils/MathUtil.h"
 
 enum eRotationOrder
@@ -137,13 +139,13 @@ public:
     static tMatrix4 TransformMat(const tVector4 &translation,
                                 const tVector4 &euler_xyz_orientation);
     static tMatrix4 TranslateMat(const tVector4 &trans);
-    static tMatrix4 ScaleMat(FLOAT scale);
+    static tMatrix4 ScaleMat(_FLOAT scale);
     static tMatrix4 ScaleMat(const tVector4 &scale);
     static tMatrix4
     RotateMat(const tVector4 &euler,
               const eRotationOrder gRotationOrder); // euler angles order rot(Z)
                                                     // * rot(Y) * rot(X)
-    static tMatrix4 RotateMat(const tVector4 &axis, FLOAT theta);
+    static tMatrix4 RotateMat(const tVector4 &axis, _FLOAT theta);
     static tMatrix4 RotateMat(const tQuaternion &q);
     static tMatrix4 CrossMat(const tVector4 &a);
     // inverts a transformation consisting only of rotations and translations
@@ -152,23 +154,23 @@ public:
     static tVector4 InvEuler(const tVector4 &euler,
                             const eRotationOrder gRotationOrder);
     static void RotMatToAxisAngle(const tMatrix4 &mat, tVector4 &out_axis,
-                                  FLOAT &out_theta);
+                                  _FLOAT &out_theta);
     static tVector4 RotMatToEuler(const tMatrix4 &mat,
                                  const eRotationOrder gRotationOrder);
-    static tMatrix2 RotMat2D(FLOAT angle);
+    static tMatrix2 RotMat2D(_FLOAT angle);
     static tMatrix4 AxisAngleToRotmat(const tVector4 &angvel);
     static tQuaternion RotMatToQuaternion(const tMatrix4 &mat);
     static tVector4 EulerangleToAxisAngle(const tVector4 &euler,
                                          const eRotationOrder gRotationOrder);
     static void EulerToAxisAngle(const tVector4 &euler, tVector4 &out_axis,
-                                 FLOAT &out_theta,
+                                 _FLOAT &out_theta,
                                  const eRotationOrder gRotationOrder);
-    static tVector4 AxisAngleToEuler(const tVector4 &axis, FLOAT theta);
+    static tVector4 AxisAngleToEuler(const tVector4 &axis, _FLOAT theta);
     static tMatrix4 DirToRotMat(const tVector4 &dir, const tVector4 &up);
 
-    static void DeltaRot(const tVector4 &axis0, FLOAT theta0,
-                         const tVector4 &axis1, FLOAT theta1, tVector4 &out_axis,
-                         FLOAT &out_theta);
+    static void DeltaRot(const tVector4 &axis0, _FLOAT theta0,
+                         const tVector4 &axis1, _FLOAT theta1, tVector4 &out_axis,
+                         _FLOAT &out_theta);
     static tMatrix4 DeltaRot(const tMatrix4 &R0, const tMatrix4 &R1);
 
     static tQuaternion EulerToQuaternion(const tVector4 &euler,
@@ -176,19 +178,19 @@ public:
     static tQuaternion CoefVectorToQuaternion(const tVector4 &coef);
     static tVector4 QuaternionToEuler(const tQuaternion &q,
                                      const eRotationOrder gRotationOrder);
-    static tQuaternion AxisAngleToQuaternion(const tVector4 &axis, FLOAT theta);
+    static tQuaternion AxisAngleToQuaternion(const tVector4 &axis, _FLOAT theta);
     static tVector4 QuaternionToAxisAngle(const tQuaternion &q);
     static void QuaternionToAxisAngle(const tQuaternion &q, tVector4 &out_axis,
-                                      FLOAT &out_theta);
+                                      _FLOAT &out_theta);
     static tMatrix4 BuildQuaternionDiffMat(const tQuaternion &q);
     static tVector4 CalcQuaternionVel(const tQuaternion &q0,
-                                     const tQuaternion &q1, FLOAT dt);
+                                     const tQuaternion &q1, _FLOAT dt);
     static tVector4 CalcQuaternionVelRel(const tQuaternion &q0,
-                                        const tQuaternion &q1, FLOAT dt);
+                                        const tQuaternion &q1, _FLOAT dt);
     static tQuaternion VecToQuat(const tVector4 &v);
     static tVector4 QuatToVec(const tQuaternion &q);
     static tQuaternion QuatDiff(const tQuaternion &q0, const tQuaternion &q1);
-    static FLOAT QuatDiffTheta(const tQuaternion &q0, const tQuaternion &q1);
+    static _FLOAT QuatDiffTheta(const tQuaternion &q0, const tQuaternion &q1);
     // static tMatrix Calc_Dq1q0conj_Dq0(const tQuaternion &q0,
     //                                   const tQuaternion &q1);
     // static void TestCalc_Dq1q0conj_Dq0();
@@ -198,7 +200,7 @@ public:
     // static void TestCalc_DQuaterion_DEulerAngles();
     // static void TestCalc_DQuaterniontDAxisAngle();
 
-    static FLOAT QuatTheta(const tQuaternion &dq);
+    static _FLOAT QuatTheta(const tQuaternion &dq);
     static tQuaternion VecDiffQuat(const tVector4 &v0, const tVector4 &v1);
     static tVector4 QuatRotVec(const tQuaternion &q, const tVector4 &dir);
     // static tQuaternion MirrorQuaternion(const tQuaternion &q, eAxis axis);
@@ -209,7 +211,7 @@ public:
     //                                         tQuaternion &out_twist);
     // static tQuaternion ProjectQuat(const tQuaternion &q, const tVector &dir);
 
-    // static void ButterworthFilter(FLOAT dt, FLOAT cutoff,
+    // static void ButterworthFilter(_FLOAT dt, _FLOAT cutoff,
     //                               tVectorXd &out_x);
 
     // added by myself
@@ -224,10 +226,10 @@ public:
     // static tVector QuaternionToAxisAngle(const tQuaternion &);
     // static tVector CalcAngularVelocity(const tQuaternion &old_rot,
     //                                    const tQuaternion &new_rot,
-    //                                    FLOAT timestep);
+    //                                    _FLOAT timestep);
     static tVector4 CalcAngularVelocityFromAxisAngle(const tQuaternion &old_rot,
                                                     const tQuaternion &new_rot,
-                                                    FLOAT timestep);
+                                                    _FLOAT timestep);
     static tVector4 QuaternionToEulerAngles(const tQuaternion &,
                                            const eRotationOrder &order);
 
@@ -239,10 +241,11 @@ public:
     //                                 const eRotationOrder &order);
 
 protected:
-    static tMatrix4 EulerAngleRotmatX(FLOAT x);
-    static tMatrix4 EulerAngleRotmatY(FLOAT x);
-    static tMatrix4 EulerAngleRotmatZ(FLOAT x);
-    static tMatrix4 EulerAngleRotmatdX(FLOAT x);
-    static tMatrix4 EulerAngleRotmatdY(FLOAT x);
-    static tMatrix4 EulerAngleRotmatdZ(FLOAT x);
+    static tMatrix4 EulerAngleRotmatX(_FLOAT x);
+    static tMatrix4 EulerAngleRotmatY(_FLOAT x);
+    static tMatrix4 EulerAngleRotmatZ(_FLOAT x);
+    static tMatrix4 EulerAngleRotmatdX(_FLOAT x);
+    static tMatrix4 EulerAngleRotmatdY(_FLOAT x);
+    static tMatrix4 EulerAngleRotmatdZ(_FLOAT x);
 };
+#endif

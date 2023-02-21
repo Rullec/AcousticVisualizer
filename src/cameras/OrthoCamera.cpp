@@ -2,8 +2,8 @@
 #include "utils/LogUtil.h"
 
 cOrthoCamera::cOrthoCamera(const tVector3 &pos_, const tVector3 &center_,
-                           const tVector3 &up_, FLOAT init_box,
-                           FLOAT near_plane_dist, FLOAT far_plane_dist)
+                           const tVector3 &up_, _FLOAT init_box,
+                           _FLOAT near_plane_dist, _FLOAT far_plane_dist)
     : CameraBase(pos_, center_, up_, 0, near_plane_dist, far_plane_dist)
 
 {
@@ -20,7 +20,7 @@ void cOrthoCamera::MoveLeft() {}
 void cOrthoCamera::MoveRight() {}
 void cOrthoCamera::MoveUp() {}
 void cOrthoCamera::MoveDown() {}
-void cOrthoCamera::MouseMove(FLOAT mouse_x, FLOAT mouse_y)
+void cOrthoCamera::MouseMove(_FLOAT mouse_x, _FLOAT mouse_y)
 {
     if (first_mouse)
     {
@@ -29,8 +29,8 @@ void cOrthoCamera::MouseMove(FLOAT mouse_x, FLOAT mouse_y)
         first_mouse = false;
         return;
     }
-    FLOAT x_offset = (last_x - mouse_x) * mInitBoxSize;
-    FLOAT y_offset = (-mouse_y + last_y) * mInitBoxSize;
+    _FLOAT x_offset = (last_x - mouse_x) * mInitBoxSize;
+    _FLOAT y_offset = (-mouse_y + last_y) * mInitBoxSize;
     last_x = mouse_x;
     last_y = mouse_y;
     x_offset *= mouse_acc;
@@ -48,10 +48,10 @@ void cOrthoCamera::MouseMove(FLOAT mouse_x, FLOAT mouse_y)
     mCamCenter += shift;
 }
 
-tMatrix4 cOrthoCamera::ProjMatrix(FLOAT screen_width, FLOAT screen_height,
+tMatrix4 cOrthoCamera::ProjMatrix(_FLOAT screen_width, _FLOAT screen_height,
                                    bool is_vulkan /*= false*/) const
 {
-    FLOAT gamma = screen_height / screen_width;
+    _FLOAT gamma = screen_height / screen_width;
 
     tMatrix4 mat = tMatrix4::Zero();
     // ortho: refine
@@ -73,7 +73,7 @@ tMatrix4 cOrthoCamera::ProjMatrix(FLOAT screen_width, FLOAT screen_height,
     return mat;
 }
 
-tVector4 cOrthoCamera::CalcCursorPointWorldPos(FLOAT xpos, FLOAT ypos,
+tVector4 cOrthoCamera::CalcCursorPointWorldPos(_FLOAT xpos, _FLOAT ypos,
                                               int height, int width)
 {
     tMatrix4 mat1 = tMatrix4::Identity();

@@ -4,6 +4,7 @@
 #include "utils/JsonUtil.h"
 #include "utils/LogUtil.h"
 #include "utils/MathUtil.h"
+#include "utils/json/json.h"
 #include "scenes/DrawSceneImGUI.h"
 cDrawScenePtr gDrawScene = nullptr;
 cSimScenePtr gSimScene = nullptr;

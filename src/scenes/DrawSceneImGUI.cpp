@@ -3,12 +3,14 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "imgui.h"
-#include "implot.h"
+#include "scenes/TextureManager.h"
 #include "utils/FileUtil.h"
 #include "utils/LogUtil.h"
+#include "utils/RenderGrid.h"
 #include "utils/SysUtil.h"
 #include "utils/TimeUtil.hpp"
 #include <iostream>
+
 #define GLFW_INCLUDE_VULKAN
 #ifdef _WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -101,7 +103,6 @@ void cDrawSceneImGui::CreateImGuiContext()
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImPlot::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     (void)io;
     // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable
@@ -289,11 +290,27 @@ static void HelpMarker(const char *desc)
     }
 }
 extern int gWindowWidth;
+#include "cameras/CameraBase.h"
 #include "scenes/SimCallback.h"
-void cDrawSceneImGui::Update(FLOAT dt) { cDrawScene::Update(dt); }
+static int gRecordScreenIdx = 0;
+void cDrawSceneImGui::Update(_FLOAT dt)
+{
+    cDrawScene::Update(dt);
+    if (mRecordScreen == true)
+    {
+        std::string path = cFileUtil::GenerateSerialFilename(
+            "data/export_data/screenshort.ppm", gRecordScreenIdx++);
+        ScreenShotDraw(path);
+        printf("[debug] record screen to %s\n", path.c_str());
+    }
+}
 
 void cDrawSceneImGui::PreUpdateImGui()
 {
+    if (mEnableGrid)
+    {
+        AddRenderResource(mGrid->GetRenderingResource());
+    }
     // update the GUI
     ImGui_ImplVulkan_NewFrame(); // empty
     ImGui_ImplGlfw_NewFrame();   // make sense
@@ -313,11 +330,18 @@ void cDrawSceneImGui::PreUpdateImGui()
         ImGuiWindowFlags window_flags = 0;
 
         ImGui::Begin("config");
+        ImGui::Checkbox("axes", &mEnableAxes);
+        ImGui::Checkbox("ground", &mEnableGround);
         ImGui::Text("FPS %.1f", mCurFPS);
+
+        ImGui::Text("cam %s", this->mCamera->GetDescString().c_str());
     }
-    
 }
-void cDrawSceneImGui::UpdateImGui() {}
+void cDrawSceneImGui::UpdateImGui()
+{
+    ImGui::Checkbox("record screen", &mRecordScreen);
+    ImGui::Checkbox("grid", &mEnableGrid);
+}
 void cDrawSceneImGui::PostUpdateImGui()
 {
     ImGui::End();
@@ -325,7 +349,7 @@ void cDrawSceneImGui::PostUpdateImGui()
 
     // update the simulation scene
     std::string fps_meansure_str = "fps_measure";
-    FLOAT shift_perc = 0.99;
+    _FLOAT shift_perc = 0.99;
     if (cTimeUtil::HasBegin(fps_meansure_str))
     {
 
@@ -344,9 +368,39 @@ void cDrawSceneImGui::PostUpdateImGui()
     cTimeUtil::Begin(fps_meansure_str);
 }
 extern cRenderResourcePtr gAxesRenderResource;
+extern cRenderResourcePtr gGroundRenderResource;
 void cDrawSceneImGui::DrawFrame()
 {
-    mRenderResourceArray.push_back(gAxesRenderResource);
+    // printf("---------------new frame ------------------\n");
+    // 1. collect rendering resource
+    if (this->mEnableAxes)
+        mRenderResourceArray.push_back(gAxesRenderResource);
+    if (this->mEnableGround)
+        mRenderResourceArray.push_back(gGroundRenderResource);
+
+    // 2. sort, check result
+    // prepare to load texture
+    {
+        auto tex_manager = GetTextureManager();
+        for (int i = 0; i < mRenderResourceArray.size(); i++)
+        {
+            auto x = mRenderResourceArray[i];
+            std::string tex_path = (x->mMaterialPtr == nullptr)
+                                       ? ""
+                                       : (x->mMaterialPtr->mTexImgPath);
+            int id = tex_manager->FetchTextureId(mDevice, mPhysicalDevice,
+                                                 mCommandPool, mGraphicsQueue,
+                                                 tex_path);
+            // printf("[log] render resource %d tex path %s (size%d)\n", i,
+            //        tex_path.c_str(), tex_path.size());
+        }
+    }
+
+    int num_resources = mRenderResourceArray.size();
+    if (mDescriptorSets.size() != 0)
+        vkDestroyDescriptorPool(mDevice, mDescriptorPool, nullptr);
+    CreateDescriptorPool(mDescriptorPool, num_resources);
+    CreateDescriptorSets(mDescriptorSets);
 
     // printf("[debug] render resource num %d\n",
     // mRenderResourceArray.size()); for (auto &x : mRenderResourceArray)
@@ -360,15 +414,14 @@ void cDrawSceneImGui::DrawFrame()
     bool need_to_recreate_swapchain =
         FenceAndAcquireImageFromSwapchain(imageIndex);
     UpdateMVPUniformValue(imageIndex);
-    UpdateVertexBufferSimObj(imageIndex);
-    UpdateVertexBufferGround(imageIndex);
+    UpdateTriangleBufferSimObj(imageIndex);
     UpdateLineBuffer(imageIndex);
-    if (true == NeedRecreateCommandBuffers())
-    {
-        DestoryCommandBuffers();
-        mBufferReallocated = false;
-        CreateCommandBuffers();
-    }
+    // if (true == NeedRecreateCommandBuffers())
+    // {
+    DestoryCommandBuffers();
+    mBufferReallocated = false;
+    CreateCommandBuffers();
+    // }
     DrawImGui(imageIndex);
     // draw the GUI
 
@@ -504,7 +557,6 @@ void cDrawSceneImGui::CleanSwapChain()
     // Resources to destroy when the program ends
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
-    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
     vkDestroyDescriptorPool(mDevice, mDescriptorPoolImGui, nullptr);

@@ -24,7 +24,7 @@ struct tGrid
     int FindNearestTriangleWhenOutside(const tVector2 &cur_pos,
                                        tVector3 &bary) const;
     void AddTriangle(int tri_id, tTriangle2DPtr cur_tri);
-    FLOAT CalcDistanceFromPosToSquareGrid(const tVector2 &pos) const;
+    _FLOAT CalcDistanceFromPosToSquareGrid(const tVector2 &pos) const;
     std::vector<tTriangle2DPtr> mTrianglesArray;
     tVector2 mAABBSt, mAABBEd;
     std::map<int, int> mLocalTriId2GlobalTriId;
