@@ -15,6 +15,10 @@
 #include "utils/json/json.h"
 #include <iostream>
 
+#include "sim/KinematicBodyBuilder.h"
+#include "utils/TimeUtil.hpp"
+cKinematicBodyPtr gDrawSphereClick = nullptr;
+cTimePoint gStartPtTimeClickSphere;
 std::string gSceneTypeStr[eSceneType::NUM_OF_SCENE_TYPES] = {"sim", "diff_sim"};
 
 eSceneType cSimScene::BuildSceneType(const std::string &str)
@@ -231,6 +235,17 @@ void cSimScene::UpdateRenderingResource()
         mRenderResource.insert(mRenderResource.end(), cur_resource.begin(),
                                cur_resource.end());
     }
+
+    if (cTimeUtil::CalcTimeElaspedms(gStartPtTimeClickSphere,
+                                     cTimeUtil::GetCurrentTime_chrono()) > 500)
+    {
+        gDrawSphereClick = nullptr;
+    }
+    if (gDrawSphereClick != nullptr)
+    {
+        auto res = gDrawSphereClick->GetRenderingResource();
+        mRenderResource.insert(mRenderResource.end(), res.begin(), res.end());
+    }
     cProfUtil::End("render_res");
     gUpdateRenderingResourceInfo = cProfUtil::GetTreeDesc("render_res");
     // CalcEdgesDrawBuffer();
@@ -290,7 +305,6 @@ void cSimScene::Key(int key, int scancode, int action, int mods)
         break;
     }
 }
-
 bool cSimScene::CreatePerturb(tRayPtr ray)
 {
     SIM_ASSERT(mRaycaster != nullptr);
@@ -351,6 +365,22 @@ bool cSimScene::CreatePerturb(tRayPtr ray)
     SIM_ASSERT(mPerturb->mBarycentricCoords.hasNaN() == false);
     mPerturb->InitTangentRect(-1 * ray->mDir);
     mPerturb->UpdatePerturbPos(ray->mOrigin, ray->mDir);
+
+    // create a temp object
+    {
+        gDrawSphereClick = std::dynamic_pointer_cast<cKinematicBody>(
+            BuildKinematicBodyFromObjPath("sphere", "data/sphere.obj", -1));
+        gStartPtTimeClickSphere = cTimeUtil::GetCurrentTime_chrono();
+
+        gDrawSphereClick->ApplyScale(1e-2);
+        gDrawSphereClick->MoveTranslation(
+            restore_intersection_pt.segment(0, 3));
+        gDrawSphereClick->UpdateRenderingResource(false);
+        std::cout << gDrawSphereClick << std::endl;
+
+        // cur_pt = cTimeUtil::GetCurrentTime_chrono();
+        // global_draw_sphere->ApplyScalar
+    }
 
     // change the color
     // mPerturb->mObject->ChangeTriangleColor(res.mLocalTriangleId,

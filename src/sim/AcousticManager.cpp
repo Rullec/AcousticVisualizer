@@ -10,18 +10,85 @@ cAcousticManager::cAcousticManager(int id_)
 {
 }
 
-void cAcousticManager::Init(const Json::Value &conf)
+struct tMaterialBasedInfo
 {
-    cBaseObject::Init(conf);
-    std::string sum_path = cJsonUtil::ParseAsString("summary_json", conf);
-
-    if (false == cFileUtil::ExistsFile(sum_path))
+    tMaterialBasedInfo()
     {
-        printf("sum_path json %s doesn't exist\n", sum_path.c_str());
+        mMaterialName = "";
+        mId2TypeStr.clear();
+        mMaterialData.clear();
     }
+    std::string mMaterialName;
+    std::vector<std::string> mId2TypeStr;
+    std::vector<tDataVec> mMaterialData;
+};
+
+tMaterialBasedInfo LoadMaterial(const Json::Value &material_json)
+{
+    tMaterialBasedInfo new_material_info;
+    // get many types in a single material
+    auto type_names = material_json.getMemberNames();
+    int n_types = type_names.size();
+    new_material_info.mId2TypeStr.resize(n_types);
+    for (int t = 0; t < n_types; t++)
+        new_material_info.mId2TypeStr[t] = type_names[t];
+    new_material_info.mMaterialData.resize(n_types);
+
+    printf("%d types in this material\n", n_types);
+    for (int j = 0; j < n_types; j++)
+    {
+        Json::Value obj_lst_in_a_type =
+            material_json[new_material_info.mId2TypeStr[j]];
+        int n_objs = obj_lst_in_a_type.size();
+        printf("type %d name %s, has %d objs\n", j, type_names[j].c_str(),
+               n_objs);
+        // In this material, in this type, we have many objects
+        for (int k = 0; k < n_objs; k++)
+        {
+            Json::Value cur_obj = obj_lst_in_a_type[k];
+
+            tAcousticIniData new_data;
+            new_data.type_str = cJsonUtil::ParseAsString("type_str", cur_obj);
+            new_data.type_id = cJsonUtil::ParseAsString("type_id", cur_obj);
+            new_data.obj_id = cJsonUtil::ParseAsString("obj_id", cur_obj);
+            new_data.ini_path = cJsonUtil::ParseAsString("ini", cur_obj);
+            new_data.surface_mesh_path =
+                cJsonUtil::ParseAsString("surface_mesh", cur_obj);
+
+            new_material_info.mMaterialData[j].push_back(new_data);
+        }
+    }
+    return new_material_info;
+}
+std::vector<tMaterialBasedInfo> CreateMaterialBasedInfo(const std::string &path)
+{
+    Json::Value root;
+    SIM_ASSERT(cJsonUtil::LoadJson(path, root));
+    std::vector<tMaterialBasedInfo> ret = {};
+    auto materials = root.getMemberNames();
+    printf("get %d materials\n", materials.size());
+    for (int i = 0; i < materials.size(); i++)
+    {
+
+        std::string mat_str = materials[i];
+        Json::Value material_type_lst = root[mat_str];
+        printf("--- for material %d %s---\n", i, mat_str.c_str());
+        tMaterialBasedInfo material_based_info =
+            LoadMaterial(material_type_lst);
+        material_based_info.mMaterialName = mat_str;
+
+        ret.push_back(material_based_info);
+    }
+    return ret;
+}
+
+std::vector<tMaterialBasedInfo> gMatBasedInfo;
+std::vector<tDataVec> CreateTypeBasedInfo(std::string sum_path)
+{
+
     Json::Value sum_conf;
     SIM_ASSERT(cJsonUtil::LoadJson(sum_path, sum_conf));
-
+    std::vector<tDataVec> data_vec = {};
     auto keys = sum_conf.getMemberNames();
     for (int i = 0; i < keys.size(); i++)
     {
@@ -40,20 +107,31 @@ void cAcousticManager::Init(const Json::Value &conf)
                 cJsonUtil::ParseAsString("surface_mesh", data_lst[j]);
             cur_data.push_back(new_data);
         }
-        mDataArray.push_back(cur_data);
+        data_vec.push_back(cur_data);
         printf("id %d name %s num of data %d\n", i, name.c_str(),
                cur_data.size());
     }
+    return data_vec;
+}
+void cAcousticManager::Init(const Json::Value &conf)
+{
+    cBaseObject::Init(conf);
+    std::string sum_path =
+        cJsonUtil::ParseAsString("summary_material_based_json", conf);
 
+    if (false == cFileUtil::ExistsFile(sum_path))
     {
-        tVector2i res =
-            cJsonUtil::ReadVectorJson("default_type_and_data_id", conf, 2)
+        printf("sum_path json %s doesn't exist\n", sum_path.c_str());
+    }
+    // this->mDataArray = CreateTypeBasedInfo(sum_path);
+    gMatBasedInfo = CreateMaterialBasedInfo(sum_path);
+    {
+        tVector3i res =
+            cJsonUtil::ReadVectorJson("default_mat_type_data_id", conf, 3)
                 .cast<int>();
-
-        mCurSel.select_type_id =
-            cMathUtil::Clamp(res[0], 0, this->mDataArray.size() - 1);
-        mCurSel.select_data_id = cMathUtil::Clamp(
-            res[1], 0, mDataArray[mCurSel.select_type_id].size() - 1);
+        mCurSel.select_mat_id = res[0];
+        mCurSel.select_type_id = res[1];
+        mCurSel.select_data_id = res[2];
     }
 
     Reload();
@@ -63,12 +141,23 @@ bool gDrawTet = false;
 void cAcousticManager::Update(_FLOAT dt) {}
 void cAcousticManager::UpdateImGui()
 {
-    ImGui::Text("num of types %d, cur type %d %s, num of data %d ",
-                mDataArray.size(), mCurSel.select_data_id,
-                mDataArray[mCurSel.select_data_id][0].type_str.c_str(),
-                mDataArray[mCurSel.select_data_id].size());
+    mAcousticBody->UpdateImGui();
+    ImGui::Text("num of materials %d %s, cur type %d %s, num of data %d ",
+                gMatBasedInfo.size(),
+                gMatBasedInfo[mCurSel.select_mat_id].mMaterialName.c_str(),
 
-    auto cur_data = mDataArray[mCurSel.select_type_id][mCurSel.select_data_id];
+                mCurSel.select_type_id,
+                gMatBasedInfo[mCurSel.select_mat_id]
+                    .mId2TypeStr[mCurSel.select_type_id]
+                    .c_str(),
+                gMatBasedInfo[mCurSel.select_mat_id]
+                    .mMaterialData[mCurSel.select_type_id]
+                    .size());
+
+    auto cur_data =
+        gMatBasedInfo[mCurSel.select_mat_id]
+            .mMaterialData[mCurSel.select_type_id][mCurSel.select_data_id];
+
     ImGui::Text("ini path %s", cur_data.ini_path.c_str());
     ImGui::Text("mesh path %s", cur_data.surface_mesh_path.c_str());
 
@@ -76,12 +165,37 @@ void cAcousticManager::UpdateImGui()
     ImGui::Checkbox("draw tet", &gDrawTet);
     // select obj type
     if (ImGui::BeginCombo(
-            "select obj type",
-            mDataArray[mCurSel.select_type_id][0].type_str.c_str()))
+            "select material",
+            gMatBasedInfo[mCurSel.select_mat_id].mMaterialName.c_str()))
     {
-        for (int i = 0; i < mDataArray.size(); i++)
+        for (int i = 0; i < gMatBasedInfo.size(); i++)
         {
-            auto cur_str = mDataArray[i][0].type_str;
+            auto cur_str = gMatBasedInfo[i].mMaterialName;
+            bool is_selected = i == mCurSel.select_mat_id;
+
+            if (ImGui::Selectable(cur_str.c_str(), is_selected))
+            {
+                mCurSel.select_mat_id = i;
+            }
+
+            if (is_selected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    Correct();
+    // select data type
+
+    const auto &cur_mat_info = gMatBasedInfo[mCurSel.select_mat_id];
+    std::string cur_type_str = cur_mat_info.mId2TypeStr[mCurSel.select_type_id];
+    if (ImGui::BeginCombo("select type", cur_type_str.c_str()))
+    {
+        for (int i = 0;
+             i < gMatBasedInfo[mCurSel.select_mat_id].mId2TypeStr.size(); i++)
+        {
+            auto cur_str = gMatBasedInfo[mCurSel.select_mat_id].mId2TypeStr[i];
             bool is_selected = i == mCurSel.select_type_id;
 
             if (ImGui::Selectable(cur_str.c_str(), is_selected))
@@ -97,13 +211,16 @@ void cAcousticManager::UpdateImGui()
         ImGui::EndCombo();
     }
 
-    // select data type
+    Correct();
     if (ImGui::BeginCombo("select data id",
                           std::to_string(mCurSel.select_data_id).c_str()))
     {
-        for (int i = 0; i < mDataArray[mCurSel.select_type_id].size(); i++)
+        auto &cur_data = gMatBasedInfo[mCurSel.select_mat_id]
+                             .mMaterialData[mCurSel.select_type_id];
+        for (int i = 0; i < cur_data.size(); i++)
         {
-            auto cur_str = mDataArray[mCurSel.select_type_id][i].obj_id;
+
+            auto cur_str = cur_data[i].obj_id;
             bool is_selected = i == mCurSel.select_data_id;
 
             if (ImGui::Selectable(cur_str.c_str(), is_selected))
@@ -118,16 +235,39 @@ void cAcousticManager::UpdateImGui()
         }
         ImGui::EndCombo();
     }
+
     if (old_sel.select_data_id != mCurSel.select_data_id ||
-        old_sel.select_type_id != mCurSel.select_type_id)
+        old_sel.select_type_id != mCurSel.select_type_id ||
+        old_sel.select_data_id != mCurSel.select_data_id)
     {
         Reload();
     }
 }
 #include "sim/KinematicBodyBuilder.h"
+void cAcousticManager::Correct()
+{
+
+    mCurSel.select_mat_id =
+        cMathUtil::Clamp(mCurSel.select_mat_id, 0, gMatBasedInfo.size() - 1);
+    mCurSel.select_type_id =
+
+        cMathUtil::Clamp(
+            mCurSel.select_type_id, 0,
+            gMatBasedInfo[mCurSel.select_mat_id].mId2TypeStr.size() - 1);
+
+    mCurSel.select_data_id =
+        cMathUtil::Clamp(mCurSel.select_data_id, 0,
+                         gMatBasedInfo[mCurSel.select_mat_id]
+                                 .mMaterialData[mCurSel.select_type_id]
+                                 .size() -
+                             1);
+}
 void cAcousticManager::Reload()
 {
-    auto cur_data = mDataArray[mCurSel.select_type_id][mCurSel.select_data_id];
+    Correct();
+    auto cur_data =
+        gMatBasedInfo[mCurSel.select_mat_id]
+            .mMaterialData[mCurSel.select_type_id][mCurSel.select_data_id];
     std::string ini_path = cur_data.ini_path;
     Json::Value val;
     val["object_name"] = "acoustic_body";
@@ -154,7 +294,6 @@ void cAcousticManager::Reload()
                mAcousticBody->GetTriangleArray().size());
     }
 
-    
     mAcousticBody->UpdateRenderingResource();
     mSurf->UpdateRenderingResource(false);
 }

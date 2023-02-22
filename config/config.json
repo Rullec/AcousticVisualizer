@@ -8,6 +8,7 @@
             "summary_json": "scripts/shapenet_summary.json",
             "default_type_and_data_id": [
                 3,
+                0,
                 0
             ]
         }
@@ -17,14 +18,16 @@
             "object_type": "AcousticManager",
             "object_name": "manager",
             "summary_json": "scripts/shapenet_summary.json",
-            "default_type_and_data_id": [
+            "summary_material_based_json": "scripts/shapenet_summary_material_based.json",
+            "default_mat_type_data_id": [
                 2,
+                0,
                 0
             ]
         }
     ],
-    "window_height": 800,
-    "window_width": 1500,
+    "window_height": 600,
+    "window_width": 800,
     "enable_draw": true,
     "pause_at_first": false,
     "ground_png_path": "data/grid0.png",
@@ -35,18 +38,18 @@
     "camera": {
         "camera_type": "arcball_cam",
         "camera_pos": [
-            1,
-            1,
-            1
+            1.5,
+            1.5,
+            1.5
         ],
         "camera_focus": [
             0,
-            0.1,
+            0.4,
             0
         ],
         "fov": 52.5,
         "near": 1e-3,
-        "far": 100
+        "far": 1e3
     },
     "enable_profiling": false,
     "enable_collision_detection": false

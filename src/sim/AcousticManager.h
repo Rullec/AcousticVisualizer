@@ -37,12 +37,14 @@ public:
 protected:
     struct tSelInfo
     {
-        int select_type_id;
-        int select_data_id;
+        int select_mat_id;  // top
+        int select_type_id; // middle
+        int select_data_id; // last
     };
     tSelInfo mCurSel;
     cAcousticBodyPtr mAcousticBody;
     cKinematicBodyPtr mSurf;
-    std::vector<tDataVec> mDataArray;
+    // std::vector<tDataVec> mDataArray;
     virtual void Reload();
+    void Correct();
 };

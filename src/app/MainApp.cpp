@@ -95,6 +95,8 @@ void cMainApp::InitGLFW()
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     gGLFWWindow = glfwCreateWindow(gWindowWidth, gWindowHeight,
                                    "AcousticVisualizer", nullptr, nullptr);
+
+    glfwSetWindowPos(gGLFWWindow, 700, 200);
     glfwSetFramebufferSizeCallback(gGLFWWindow, ResizeCallback);
     glfwSetCursorPosCallback(gGLFWWindow, CursorPositionCallback);
     glfwSetMouseButtonCallback(gGLFWWindow, MouseButtonCallback);

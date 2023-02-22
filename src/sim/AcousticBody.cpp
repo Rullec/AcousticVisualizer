@@ -234,6 +234,7 @@ void cAcousticBody::AudioSynthesis()
         memset(soundBuffer_[nt].data(), 0,
                sizeof(double) * soundBuffer_[nt].size());
     }
+    std::vector<_FLOAT> click_cam_pos = {};
     for (int i = 0; i < selTriIds.size(); ++i)
     {
         int index_t = i % NUM_THREADS;
@@ -255,11 +256,26 @@ void cAcousticBody::AudioSynthesis()
         // nml(normal1s.at(i).toDouble(),normal2s.at(i).toDouble(),normal3s.at(i).toDouble());
         nml.normalize();
 
+        // get click point
+
+        Point3d click_pos =
+            vtx[tgl[selTriId].x] + vtx[tgl[selTriId].y] + vtx[tgl[selTriId].z];
+        click_pos /= 3;
+
         Point3d CamPos; // 相机位置
 
         CamPos.x = mCamPos[0];
         CamPos.y = mCamPos[1];
         CamPos.z = mCamPos[2];
+
+        _FLOAT dist = (click_pos - CamPos).norm();
+
+        click_cam_pos.push_back(dist);
+        printf("click pos %.3f %.3f %.3f, cam pos %.3f %.3f %.3f, dist %.3f\n",
+               click_pos.x, click_pos.y, click_pos.z, CamPos.x, CamPos.y,
+               CamPos.z, dist
+
+        );
         printf("[debug] col time %.1f, tri id %d, nml %.1f %.1f %.1f, cam pos "
                "%.1f %.1f %.1f amp %.1f, index %d\n",
                collision_time, selTriId, nml.x, nml.y, nml.z, CamPos.x,
@@ -292,17 +308,28 @@ void cAcousticBody::AudioSynthesis()
     float max_sound = *(std::max_element(std::begin(whole_soundBuffer),
                                          std::end(whole_soundBuffer)));
 
+    _FLOAT mean_cam_dist = 0;
+    {
+        for (auto &x : click_cam_pos)
+        {
+            mean_cam_dist += x;
+        }
+        mean_cam_dist /= click_cam_pos.size();
+    }
     if (mEnableAudioScale == true)
     {
+        _FLOAT dist_scale =
+            cMathUtil::Clamp(-1.5 * mean_cam_dist + 26.3, 0.2f, 1.0f);
+        // _FLOAT dist_scale = 1;
         float scale = 0.9 / max_sound;
         for (auto &i : whole_soundBuffer)
-            i *= scale;
-        printf("apply scale %.1f\n", scale);
+            i *= scale * dist_scale;
+        printf("mean cam dist %.3f, apply scale %.1f, dist scale %.3f\n",
+               mean_cam_dist, scale, dist_scale);
         max_sound = 0.9;
     }
     else
     {
-
         // normalize if too loud
         if (max_sound > 500)
         {
