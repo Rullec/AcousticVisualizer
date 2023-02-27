@@ -100,40 +100,50 @@ static std::vector<cBaseObjectPtr> obj_lst = {};
 void cSNISRDebugDrawBall::UpdateRenderingResource(bool e) {}
 #include "sim/KinematicBody.h"
 #include "sim/KinematicBodyBuilder.h"
+#include "utils/RenderUtil.h"
+tEigenArr<tVectorXf> global_arr;
+#include "utils/ColorUtil.h"
 void cSNISRDebugDrawBall::InitRenderResource()
 {
     mOffsetToRenderResource.resize(mOffset2LabelId.size());
+    global_arr = {};
+
+    int num_of_pts = 0;
     for (int off = 0; off < mOffset2LabelId.size(); off++)
     {
-        tRenderResourcePerLabel resource(0);
+        tRenderResourcePerLabel resource;
         const tPtData &pt_data = mOffsetToPoints[off];
-
         for (auto &mat : pt_data)
+            num_of_pts += mat.cols();
+    }
+
+    mPointDrawBuffer.resize(num_of_pts * RENDERING_SIZE_PER_VERTICE);
+
+    Eigen::Map<tVectorXf> map(mPointDrawBuffer.data(), mPointDrawBuffer.size());
+
+    int st_pos = 0;
+    for (int i = 0; i < mOffset2LabelId.size(); i++)
+    {
+        const tPtData &pts = mOffsetToPoints[i];
+
+        auto res = std::make_shared<cRenderResource>();
+        res->mPointBuffer.mBuffer = mPointDrawBuffer.data() + st_pos;
+        int all_size = 0;
+        for (auto pt : pts)
         {
-            for (int i = 0; i < mat.cols(); i++)
+            int num_of_v = pt.cols();
+            for (int i = 0; i < num_of_v; i++)
             {
-                tVector3 tar_pos = mat.col(i).cast<_FLOAT>();
+                tVector4 cur_pos = tVector4::Zero();
+                cur_pos.segment(0, 3) = pt.col(i).cast<_FLOAT>();
 
-                std::string ball_path = "./data/sphere.obj";
-                auto ball_obj =
-                    BuildKinematicBodyFromObjPath("cons ball", ball_path, -1);
-                cKinematicBodyPtr kin_obj =
-                    std::dynamic_pointer_cast<cKinematicBody>(ball_obj);
-                tVector3 aabb_min, aabb_max;
-                kin_obj->CalcAABB(aabb_min, aabb_max);
-                obj_lst.push_back(ball_obj);
-                kin_obj->ApplyScale(1e-3);
-                kin_obj->SetCurrentPos(tar_pos);
-
-                kin_obj->CalcAABB(aabb_min, aabb_max);
-
-                kin_obj->UpdateRenderingResource();
-                auto res = kin_obj->GetRenderingResource();
-                resource.insert(resource.end(), res.begin(), res.end());
+                cRenderUtil::CalcPointDrawBufferSingle(cur_pos, ColorPurple,
+                                                       map, st_pos);
             }
+            all_size += num_of_v * RENDERING_SIZE_PER_VERTICE;
         }
-        mOffsetToRenderResource[off] = resource;
-        printf("label %d resource num %d\n", mOffset2LabelId[off],
-               resource.size());
+
+        res->mPointBuffer.mNumOfEle = all_size;
+        mOffsetToRenderResource[i] = {res};
     }
 }

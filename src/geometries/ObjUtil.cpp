@@ -578,7 +578,7 @@ void cObjUtil::BuildEdge(const std::vector<tVertexPtr> &v_array,
     for (auto t = edge_info.begin(); t != edge_info.end(); t++, t_id++)
     {
         int v0 = t->first.first, v1 = t->first.second;
-        SIM_ASSERT(v0 < v1);
+        // SIM_ASSERT(v0 < v1);
         int tid0 = t->second.first, tid1 = t->second.second;
         tEdgePtr edge = std::make_shared<tEdge>();
         edge->mId0 = v0;

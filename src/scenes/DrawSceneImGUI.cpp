@@ -416,6 +416,7 @@ void cDrawSceneImGui::DrawFrame()
     UpdateMVPUniformValue(imageIndex);
     UpdateTriangleBufferSimObj(imageIndex);
     UpdateLineBuffer(imageIndex);
+    UpdatePointBuffer(imageIndex);
     // if (true == NeedRecreateCommandBuffers())
     // {
     DestoryCommandBuffers();

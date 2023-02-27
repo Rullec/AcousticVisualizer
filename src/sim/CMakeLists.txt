@@ -43,3 +43,17 @@ target_link_libraries(sim_lib utils_lib geo_lib ${MKL_LIBRARY} ${OpenMP_CXX_LIBR
 target_compile_definitions(sim_lib PUBLIC "USE_MKL")
 target_link_directories(sim_lib PUBLIC $ENV{MKLROOT}/lib/intel64)
 target_include_directories(sim_lib PUBLIC ${MKL_INCLUDE_DIR})
+
+# support pybind11 for acoustic
+set (PYBIND11_PYTHON_VERSION "3.8.11")
+pybind11_add_module(AcousticBinder AcousticBodyBind.cpp)
+target_link_libraries(AcousticBinder PRIVATE sim_lib cam_lib utils_lib imgui_lib)
+set_target_properties(AcousticBinder
+    PROPERTIES  OUTPUT_NAME "AcousticBinder"
+     DEBUG_POSTFIX ""
+    )
+install(TARGETS AcousticBinder
+        COMPONENT python
+        LIBRARY
+        DESTINATION ${CMAKE_INSTALL_PREFIX}
+    )

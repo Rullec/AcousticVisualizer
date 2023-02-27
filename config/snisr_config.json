@@ -1,0 +1,39 @@
+{
+    "app_type": "main",
+    "scene_type": "sim",
+    "obj_list": [
+        {
+            "object_type": "SNISR_Debug_Draw",
+            "object_name": "snisr_debug",
+            "pos_info": "../AcousticSNISR/scripts/cate_to_offset_and_pos.json",
+            "limit_point_num": 10000
+        }
+    ],
+    "window_height": 800,
+    "window_width": 1200,
+    "enable_draw": true,
+    "pause_at_first": false,
+    "ground_png_path": "data/grid0.png",
+    "enable_ground": true,
+    "ground_height": false,
+    "enable_camera_auto_rot": false,
+    "enable_axes": false,
+    "camera": {
+        "camera_type": "arcball_cam",
+        "camera_pos": [
+            1.5,
+            1.5,
+            1.5
+        ],
+        "camera_focus": [
+            0,
+            0.4,
+            0
+        ],
+        "fov": 52.5,
+        "near": 1e-3,
+        "far": 1e3
+    },
+    "enable_profiling": false,
+    "enable_collision_detection": false
+}

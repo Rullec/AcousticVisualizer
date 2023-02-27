@@ -33,13 +33,13 @@ cAcousticBody::cAcousticBody(int id)
     mEnableRangeClick = true;
     mEnableAudioScale = true;
     mRangeClickRadius = 1 * 1e-3;
+    mCustomDampVectorScale = 1;
 }
 cAcousticBody::~cAcousticBody() {}
-void cAcousticBody::Init(const Json::Value &conf)
+
+void cAcousticBody::InitFromIni(std::string ini_path, bool enable_start_sound)
 {
-    cBaseObject::Init(conf);
-    // 1. get ini path
-    mIniPath = cJsonUtil::ParseAsString("ini_path", conf);
+    mIniPath = ini_path;
     if (cFileUtil::ExistsFile(mIniPath) == false)
     {
         SIM_ERROR("ini %s doesn't exist", mIniPath.c_str());
@@ -113,7 +113,16 @@ void cAcousticBody::Init(const Json::Value &conf)
     InitAudioGeo();
     InitAudioBuffer();
 
-    AudioSynthesis();
+    if (enable_start_sound == true)
+        AudioSynthesis();
+}
+
+void cAcousticBody::Init(const Json::Value &conf)
+{
+    cBaseObject::Init(conf);
+    // 1. get ini path
+    mIniPath = cJsonUtil::ParseAsString("ini_path", conf);
+    InitFromIni(mIniPath, true);
 }
 #include "cameras/CameraFactory.h"
 void cAcousticBody::Update(_FLOAT dt)
@@ -214,7 +223,7 @@ void cAcousticBody::InitAudioBuffer()
         std::max(int(SR * 1.0 * 1 + SR * mClickInfo.mTS * 1), SR * 1));
 }
 
-void cAcousticBody::AudioSynthesis()
+void cAcousticBody::AudioSynthesis(bool enable_outsider_amp, _FLOAT outside_amp)
 {
     for (auto &x : mClickInfo.mTriIds)
     {
@@ -318,14 +327,23 @@ void cAcousticBody::AudioSynthesis()
     }
     if (mEnableAudioScale == true)
     {
-        _FLOAT dist_scale =
-            cMathUtil::Clamp(-1.5 * mean_cam_dist + 26.3, 0.2f, 1.0f);
-        // _FLOAT dist_scale = 1;
         float scale = 0.9 / max_sound;
+        if (enable_outsider_amp == false)
+        {
+            _FLOAT dist_scale =
+                cMathUtil::Clamp(-1.5 * mean_cam_dist + 26.3, 0.2f, 1.0f);
+            // _FLOAT dist_scale = 1;
+            scale *= dist_scale;
+            printf("mean cam dist %.3f, apply scale %.1f, dist scale %.3f\n",
+                   mean_cam_dist, scale, dist_scale);
+        }
+        else
+        {
+            scale *= outside_amp;
+            printf("outside amp %.3f\n", outside_amp);
+        }
         for (auto &i : whole_soundBuffer)
-            i *= scale * dist_scale;
-        printf("mean cam dist %.3f, apply scale %.1f, dist scale %.3f\n",
-               mean_cam_dist, scale, dist_scale);
+            i *= scale;
         max_sound = 0.9;
     }
     else
@@ -491,13 +509,14 @@ void cAcousticBody::single_channel_synthesis(const Tuple3ui &tri,
             // cout<<"mode "<<i<<" mForce: "<<mForce_[i]<<"\n";
             // clock_t sub_start = clock();
             printf("[debug] mode %d w %.1f trans %.3f c %.3f\n", j, omegaD[i],
-                   abs(trans), c[i]);
+                   abs(trans), c[i] * mCustomDampVectorScale);
             for (int ti = 0; ti < totTicks; ++ti)
             {
                 const double ts =
                     static_cast<double>(ti) / static_cast<double>(SR); // time
                 const double amp =
-                    exp(-c[i] * 0.5 * ts); // exp(-xi * omega * t)
+                    exp(-c[i] * 0.5 * ts *
+                        mCustomDampVectorScale); // exp(-xi * omega * t)
                 /*
                     sound += e^{c_i * 0.5 * t} * SS * sin(wd * t) * amplitude
                                 exp decay unit_force_sound_pressure_this_mode *
@@ -554,6 +573,9 @@ void cAcousticBody::UpdateImGui()
         2. click v set
         3. audio amp, ts
     */
+
+    ImGui::DragFloat("custom damp", &mCustomDampVectorScale, 0, 0.1, 10,
+                     "%.1f");
     if (ImGui::CollapsingHeader("acoustic options",
                                 ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -606,7 +628,6 @@ void cAcousticBody::ApplyUserPerturbForceOnce(tPerturb *pert)
     // 1. calculate current click vertex
     if (mEnableRangeClick == true)
     {
-
         int center_tid = pert->mAffectedTriId;
         std::vector<_FLOAT> dist(GetNumOfTriangles(), 0);
         for (int i = 0; i < GetNumOfTriangles(); i++)
@@ -721,4 +742,50 @@ void cAcousticBody::Shift(const tVector3 &pos)
     {
         v->mPos.segment(0, 3) += pos;
     }
+}
+
+std::string cAcousticBody::GetIniPath() const { return this->mIniPath; }
+tVectorXf cAcousticBody::GetVertexPosVec()
+{
+    tVectorXf vec_pos(3 * GetNumOfVertices());
+    for (int vid = 0; vid < GetNumOfVertices(); vid++)
+    {
+        vec_pos.segment(3 * vid, 3) =
+            mVertexArray[vid]->mPos.segment(0, 3).cast<float>();
+    }
+    return vec_pos;
+}
+tVectorXi cAcousticBody::GetTriIdVec()
+{
+    tVectorXi vec(3 * GetNumOfTriangles());
+    for (int i = 0; i < GetNumOfTriangles(); i++)
+    {
+        vec[3 * i + 0] = mTriangleArray[i]->mId0;
+        vec[3 * i + 1] = mTriangleArray[i]->mId1;
+        vec[3 * i + 2] = mTriangleArray[i]->mId2;
+    }
+    return vec;
+}
+void cAcousticBody::UpdateCamPos(const tVector3f &pos)
+{
+    mCamPos = pos.cast<_FLOAT>();
+}
+void cAcousticBody::ClickTriangle(int tid, _FLOAT outside_scale,
+                                  _FLOAT tmp_overdamp_scale)
+{
+    float cur_tmp = mCustomDampVectorScale;
+    mCustomDampVectorScale = tmp_overdamp_scale;
+    mClickInfo.mTS;
+    mClickInfo.mAudioAmp = 1;
+    mClickInfo.mAmp = {1};
+    mClickInfo.mNormal = {tVector3(0, 1, 0)};
+    mClickInfo.mTriIds = {tid};
+    std::cout << "custom damp scale = " << mCustomDampVectorScale << std::endl;
+    AudioSynthesis(true, outside_scale);
+    mCustomDampVectorScale = cur_tmp;
+}
+
+tVector3f cAcousticBody::GetCamPos() const
+{
+    return this->mCamPos.cast<float>();
 }

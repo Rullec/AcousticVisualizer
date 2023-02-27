@@ -1,18 +1,6 @@
 {
     "app_type": "main",
     "scene_type": "sim",
-    "obj_list.b": [
-        {
-            "object_type": "AcousticManager",
-            "object_name": "manager",
-            "summary_json": "scripts/shapenet_summary.json",
-            "default_type_and_data_id": [
-                3,
-                0,
-                0
-            ]
-        }
-    ],
     "obj_list": [
         {
             "object_type": "AcousticManager",
@@ -26,8 +14,17 @@
             ]
         }
     ],
-    "window_height": 600,
-    "window_width": 800,
+    "obj_list.bak": [
+        {
+            "object_type": "AcousticBody",
+            "object_name": "manager",
+            "ini_path": "/home/acoustic/Projects/AcousticVisualizer/ShapeNetData/20221115_full_sampling_13to20.send/telephone_04401088_1b41282fb44f9bb28f6823689e03ea4_pvc/generate0.ini"
+        }
+    ],
+    "window_height.bak": 600,
+    "window_width.bak": 800,
+    "window_height": 800,
+    "window_width": 1200,
     "enable_draw": true,
     "pause_at_first": false,
     "ground_png_path": "data/grid0.png",

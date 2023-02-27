@@ -8,7 +8,7 @@
 #define ColorChigusaIro                                                        \
     tVector4(49 / 255.0, 117 / 255.0, 137 / 255.0, 1) // 千草色
 #define ColorShiQing tVector4(123 / 255.0, 207 / 255.0, 166 / 255.0, 1); // 石青
-#define ColorPurple tVector4(236 / 255.0, 29 / 255.0, 215 / 255.0, 1); 
+#define ColorPurple tVector4(236 / 255.0, 29 / 255.0, 215 / 255.0, 1) 
 
 #define ColorDianLan tVector4(6 / 255.0, 82 / 255.0, 121 / 255.0, 1) // 靛蓝
 #define ColorAn tVector4(65 / 255.0, 85 / 255.0, 93 / 255.0, 1)      // 黯

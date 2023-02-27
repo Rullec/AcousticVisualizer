@@ -1004,6 +1004,8 @@ void cDrawScene::CreatePointCommandBuffers(int i)
 
     tMaterialPushConstant constants;
     constants.enable_texture = false;
+    constants.enable_basic_color = true;
+    constants.enable_phongmodel = false;
     vkCmdPushConstants(mCommandBuffers[i], mPipelineLayout,
                        VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                        sizeof(tMaterialPushConstant), &constants);
